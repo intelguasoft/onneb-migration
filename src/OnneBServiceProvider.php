@@ -5,6 +5,7 @@ namespace RealsoftGt\OnneB;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use RealsoftGt\OnneB\Mapping\CatalogMapper;
+use RealsoftGt\OnneB\Sources\SourceManager;
 
 class OnneBServiceProvider extends ServiceProvider
 {
@@ -12,6 +13,7 @@ class OnneBServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/onneb.php', 'onneb');
 
+        $this->app->singleton(SourceManager::class);
         $this->app->bind(CatalogMapper::class, fn (Application $app): CatalogMapper => new CatalogMapper(
             $app['config']->get('onneb.mapping.extra_units', []),
             $app['config']->get('onneb.mapping.generic_brands', ['VARIOS']),
