@@ -96,13 +96,13 @@ it('pide --force para escribir en producción', function () {
     app()->instance(CatalogImporter::class, $importer);
     app()->detectEnvironment(fn () => 'production');
 
-    $this->artisan('onneb:migrate', ['--source' => 'database', '--execute' => true])
-        ->expectsConfirmation('Are you sure you want to run this command?', 'no')
-        ->assertFailed();
+    $this->withoutMockingConsoleOutput();
 
-    expect($importer->runs)->toBe(0);
+    $cancelled = $this->artisan('onneb:migrate', ['--source' => 'database', '--execute' => true, '--no-interaction' => true]);
 
-    $this->artisan('onneb:migrate', ['--source' => 'database', '--execute' => true, '--force' => true])->assertSuccessful();
+    expect($cancelled)->toBe(1)->and($importer->runs)->toBe(0);
 
-    expect($importer->runs)->toBe(1);
+    $forced = $this->artisan('onneb:migrate', ['--source' => 'database', '--execute' => true, '--force' => true]);
+
+    expect($forced)->toBe(0)->and($importer->runs)->toBe(1);
 });
