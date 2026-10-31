@@ -4,7 +4,7 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
-## [1.0.0]
+## [1.0.0] - 2026-10-31
 
 ### Agregado
 
@@ -15,3 +15,6 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 - Excel de revisión con resumen, incidencias, presentaciones, mayoreo y pendientes.
 - Comandos `onneb:export`, `onneb:verify`, `onneb:review` y `onneb:migrate`.
 - Soporte para Laravel 12 y 13 con PHP 8.3 o superior.
+
+[Sin publicar]: https://github.com/intelguasoft/onneb-migration/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/intelguasoft/onneb-migration/releases/tag/v1.0.0
