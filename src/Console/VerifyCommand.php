@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use RealsoftGt\OnneB\Exceptions\OnneBException;
 use RealsoftGt\OnneB\Sources\SnapshotSource;
+use RealsoftGt\OnneB\Support\MemoryLimit;
 
 class VerifyCommand extends Command
 {
@@ -15,6 +16,8 @@ class VerifyCommand extends Command
 
     public function handle(Filesystem $files): int
     {
+        MemoryLimit::raise();
+
         $path = $this->argument('path') ?? config('onneb.sources.snapshot.path');
 
         try {

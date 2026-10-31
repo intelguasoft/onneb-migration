@@ -24,6 +24,20 @@ it('exporta y verifica una extracción', function () {
     $this->artisan('onneb:verify')->assertSuccessful();
 });
 
+it('sube el límite de memoria para procesar el catálogo completo', function (string $command) {
+    $this->artisan('onneb:export')->assertSuccessful();
+
+    $current = ini_get('memory_limit');
+    ini_set('memory_limit', '512M');
+    config(['onneb.memory_limit' => '1G']);
+
+    $this->artisan($command)->assertSuccessful();
+
+    expect(ini_get('memory_limit'))->toBe('1G');
+
+    ini_set('memory_limit', $current);
+})->with(['onneb:export', 'onneb:verify']);
+
 it('permite indicar carpeta y empresa al exportar', function () {
     $path = $this->snapshotPath().'/otra';
 

@@ -5,6 +5,7 @@ namespace RealsoftGt\OnneB\Console;
 use Illuminate\Console\Command;
 use RealsoftGt\OnneB\Exceptions\OnneBException;
 use RealsoftGt\OnneB\Snapshot\SnapshotWriter;
+use RealsoftGt\OnneB\Support\MemoryLimit;
 
 class ExportCommand extends Command
 {
@@ -16,6 +17,8 @@ class ExportCommand extends Command
 
     public function handle(SnapshotWriter $writer): int
     {
+        MemoryLimit::raise();
+
         $path = $this->argument('path') ?? config('onneb.sources.snapshot.path');
 
         try {

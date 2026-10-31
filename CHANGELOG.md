@@ -4,6 +4,10 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
+### Corregido
+
+- `onneb:export` y `onneb:verify` respetan `onneb.memory_limit`: con el límite de 128M que trae PHP no alcanzaban a procesar un catálogo completo.
+
 ## [1.0.0] - 2026-10-31
 
 ### Agregado
