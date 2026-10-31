@@ -5,6 +5,7 @@ namespace RealsoftGt\OnneB;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use RealsoftGt\OnneB\Mapping\CatalogMapper;
+use RealsoftGt\OnneB\Review\ReviewReport;
 use RealsoftGt\OnneB\Sources\SourceManager;
 
 class OnneBServiceProvider extends ServiceProvider
@@ -17,6 +18,11 @@ class OnneBServiceProvider extends ServiceProvider
         $this->app->bind(CatalogMapper::class, fn (Application $app): CatalogMapper => new CatalogMapper(
             $app['config']->get('onneb.mapping.extra_units', []),
             $app['config']->get('onneb.mapping.generic_brands', ['VARIOS']),
+        ));
+        $this->app->bind(ReviewReport::class, fn (Application $app): ReviewReport => new ReviewReport(
+            $app['config']->get('onneb.review.disk', 'local'),
+            $app['config']->get('onneb.review.directory', 'onneb'),
+            $app['config']->get('onneb.review.target_name', 'Destino'),
         ));
     }
 
