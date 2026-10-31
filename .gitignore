@@ -1,0 +1,15 @@
+/vendor/
+/build/
+composer.lock
+.phpunit.cache/
+.phpunit.result.cache
+.idea/
+.vscode/
+
+# Una extracción contiene costos y precios: nunca debe versionarse aquí.
+PRODUCTOS.json
+PRECIOS.json
+MARCAS.json
+INVSALDO.json
+manifest.json
+*.xlsx

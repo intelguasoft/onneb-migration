@@ -1,0 +1,69 @@
+{
+    "name": "realsoftgt/onneb-migration",
+    "description": "Migra el catálogo de OnneB (SQL Server) a aplicaciones Laravel, con extracción verificable a JSON, mapeo de presentaciones y revisión en Excel.",
+    "keywords": ["laravel", "onneb", "sql-server", "migration", "catalog", "etl", "inventory"],
+    "homepage": "https://github.com/intelguasoft/onneb-migration",
+    "support": {
+        "issues": "https://github.com/intelguasoft/onneb-migration/issues",
+        "source": "https://github.com/intelguasoft/onneb-migration",
+        "docs": "https://github.com/intelguasoft/onneb-migration/tree/main/docs"
+    },
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "intelguasoft",
+            "homepage": "https://github.com/intelguasoft"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "ext-mbstring": "*",
+        "illuminate/console": "^12.0 || ^13.0",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/database": "^12.0 || ^13.0",
+        "illuminate/filesystem": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "maatwebsite/excel": "^4.0",
+        "phpoffice/phpspreadsheet": "^5.9"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^3.8 || ^4.0"
+    },
+    "suggest": {
+        "ext-pdo_sqlsrv": "Necesaria solo para leer directamente de SQL Server o generar extracciones."
+    },
+    "autoload": {
+        "psr-4": {
+            "RealsoftGt\\OnneB\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RealsoftGt\\OnneB\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "format": "pint",
+        "analyse": "phpstan analyse --memory-limit=1G"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "RealsoftGt\\OnneB\\OnneBServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
