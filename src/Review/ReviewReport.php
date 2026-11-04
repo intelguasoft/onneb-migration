@@ -44,6 +44,7 @@ class ReviewReport
             $this->summarySheet($catalog, $import, $dryRun),
             $this->issuesSheet($import->issues, $products, $prices, $catalog->stock),
             $this->presentationsSheet($import->issues, $products, $prices),
+            $this->namesSheet($catalog->products, $products),
             $this->wholesaleSheet($catalog->prices, $products),
         ];
 
@@ -177,6 +178,39 @@ class ReviewReport
 
         return new ReviewSheet('Presentaciones', [
             ['Código', 'Producto', 'Incidencia', 'Medida OnneB', 'Factor OnneB', 'Precio OnneB', 'Costo OnneB', "Presentación {$this->targetName}", "Factor {$this->targetName}", "Precio {$this->targetName}", 'Base', 'Activa', 'Vendible'],
+            ...$rows,
+        ]);
+    }
+
+    /**
+     * Cada nombre que cambió, para revisar la limpieza antes de imprimir facturas.
+     *
+     * @param  list<array<string, mixed>>  $sourceProducts
+     * @param  Collection<string, array<string, mixed>>  $products
+     */
+    private function namesSheet(array $sourceProducts, Collection $products): ReviewSheet
+    {
+        $rows = [];
+
+        foreach ($sourceProducts as $source) {
+            $product = $products->get($this->key($source['CODPROD']));
+            $original = trim(preg_replace('/\s+/u', ' ', (string) $source['DESPROD']) ?? '');
+
+            if ($product === null || $product['name'] === $original) {
+                continue;
+            }
+
+            $rows[] = [
+                $product['sku'],
+                $original,
+                $product['name'],
+                $product['brand'] ?? '',
+                implode(', ', array_column($product['presentations'], 'name')),
+            ];
+        }
+
+        return new ReviewSheet('Nombres', [
+            ['Código', 'Nombre en OnneB', "Nombre en {$this->targetName}", 'Marca', "Presentaciones en {$this->targetName}"],
             ...$rows,
         ]);
     }

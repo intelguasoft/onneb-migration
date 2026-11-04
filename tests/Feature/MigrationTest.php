@@ -63,7 +63,7 @@ it('simula por defecto y entrega al importador el catálogo mapeado', function (
         ->and($importer->imported)->toBe(2)
         ->and($result->dryRun)->toBeTrue()
         ->and($result->reportPath)->toContain('simulacion')
-        ->and($result->mapped->products[0]['name'])->toBe('AMOXICILINA X 100 (MK)');
+        ->and($result->mapped->products[0]['name'])->toBe('AMOXICILINA');
 });
 
 it('genera el Excel con el contexto para corregir', function (string $source) {
@@ -73,7 +73,9 @@ it('genera el Excel con el contexto para corregir', function (string $source) {
     $book = workbook($result->reportPath);
     $noPrice = collect($book['Por corregir'])->firstWhere(1, '1006');
 
-    expect(array_keys($book))->toBe(['Resumen', 'Por corregir', 'Presentaciones', 'Mayoreo', 'Pendientes'])
+    expect(array_keys($book))->toBe(['Resumen', 'Por corregir', 'Presentaciones', 'Nombres', 'Mayoreo', 'Pendientes'])
+        ->and($book['Nombres'][0])->toContain('Nombre en Mi ERP')
+        ->and(collect($book['Nombres'])->firstWhere(0, '1005'))->toBe(['1005', 'AMOXICILINA X 100 (MK)x', 'AMOXICILINA', 'MK', 'Unidad, Caja x 100'])
         ->and($book['Resumen'][1][0])->toContain('Catálogo cargado')
         ->and($book['Resumen'][2][0])->toContain('EMPRESA', "origen {$source}")
         ->and($book['Resumen'][4])->toContain('Productos creados')

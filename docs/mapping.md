@@ -8,8 +8,8 @@
 [
     'sku' => '1005',
     'barcode' => '7410001010800',
-    'name' => 'AMOXICILINA X 100 CAPSULAS (MK)',
-    'description' => null,
+    'name' => 'AMOXICILINA',
+    'description' => 'AMOXICILINA X 100 CAPSULAS (MK)',
     'brand' => 'MK',
     'is_exempt' => false,
     'type' => 'good',            // good | service
@@ -76,9 +76,40 @@ Un código único que no es GTIN válido se conserva con `barcode_no_gtin`.
 
 ## Nombres y marcas
 
-- Se eliminan espacios repetidos y saltos de línea.
-- Se quita la `x` que OnneB deja tras el laboratorio: `(HERSIL)x`. El original queda en `description`.
-- Las marcas de `onneb.mapping.generic_brands` no se asignan. Por defecto: `VARIOS`.
+OnneB mezcla en la descripción el laboratorio y el empaque. En una factura, `TIRAS REACTIVAS X 100 UNIDADES` promete el empaque completo aunque se venda una fracción. Por eso el nombre conserva solo lo que identifica al producto, y el contenido pasa a la presentación:
+
+| OnneB | Nombre | Presentaciones |
+|---|---|---|
+| `ACETAMINOFEN 500MG CAJA X 100 TABLETAS [MK]` | `ACETAMINOFEN 500MG` | Unidad, Blíster x 10 tabletas, Caja x 100 tabletas |
+| `LOSARTAN 100 MG X 30 TABLETAS [ECAR]` | `LOSARTAN 100 MG` | Caja x 30 tabletas |
+| `REFORZADEC NIÑOS x25 AMPOLLAS DE 5ml (BIOVAL)` | `REFORZADEC NIÑOS 5ml` | Ampolla, Caja x 25 ampollas |
+
+Reglas:
+
+- Se quita el texto final entre paréntesis o corchetes, que en OnneB es el laboratorio, y la `x` que suele seguirlo.
+- Se quita el contenido del empaque, como `X 30 TABLETAS`, `*30 TABLETAS`, `X 25 SOBRES X 4 CAPSULAS` o `X 30+15 TABLETAS`, junto con la palabra de empaque que lo antecede (`CAJA`, `DISPENSADOR`, `FRASCO`...).
+- Se conservan la concentración (`500MG`), el tamaño (`120 ML`, que solo pierde la `X`), las medidas (`6 X 10 YDS`), los paréntesis intermedios, como un principio activo, y la forma farmacéutica (`TABLETAS MASTICABLES`).
+- El nombre original queda en `description`, salvo que `DESPROD2` o `DESPROD3` traigan otro texto.
+
+El contenido se pasa a las presentaciones así:
+
+| Caso | Resultado | Incidencia |
+|---|---|---|
+| Una presentación trae justo ese contenido | Cada paquete suma el sustantivo: `Caja x 100 tabletas` | Ninguna |
+| El producto tiene una sola presentación, que no es Unidad | Esa presentación lo declara: `Caja x 30 tabletas` | Ninguna |
+| Ninguna presentación coincide | No se inventa el dato | `contenido_por_confirmar` |
+
+Si el laboratorio del nombre no se parece a la marca de OnneB, se conserva la marca y se reporta `marca_distinta`: sin el laboratorio en el nombre, la marca es lo único que lo muestra al vender. Se toleran abreviaturas y errores de digitación, como `KIMBERLY CLARCK` frente a `KIMBERLY CLARK`.
+
+La hoja **Nombres** del Excel lista cada cambio. Para conservar los nombres de OnneB tal como están:
+
+```php
+'mapping' => [
+    'clean_names' => false, // o ONNEB_CLEAN_NAMES=false
+],
+```
+
+Sin limpieza solo se quitan los espacios repetidos y la `x` tras el laboratorio. Las marcas de `onneb.mapping.generic_brands` no se asignan; por defecto, `VARIOS`.
 
 ## Medidas
 

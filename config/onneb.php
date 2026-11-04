@@ -41,6 +41,11 @@ return [
 
         // Marcas de OnneB que no identifican a un fabricante.
         'generic_brands' => ['VARIOS'],
+
+        // Quita del nombre el laboratorio final y el contenido del empaque
+        // («CAJA X 100 TABLETAS»), que pasa a la presentación. El nombre
+        // original queda en la descripción.
+        'clean_names' => env('ONNEB_CLEAN_NAMES', true),
     ],
 
     'review' => [

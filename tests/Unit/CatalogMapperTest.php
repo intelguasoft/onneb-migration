@@ -55,7 +55,8 @@ it('usa como base la fila con factor 1 y conserva los demás factores', function
     expect($product['base_unit'])->toBe('UNIDAD')
         ->and($product['price'])->toBe(2.0)
         ->and($product['standard_cost'])->toBe(0.5)
-        ->and(array_column($product['presentations'], 'name'))->toBe(['Unidad', 'Blíster x 10', 'Caja x 100'])
+        ->and($product['name'])->toBe('ACETAMINOFEN')
+        ->and(array_column($product['presentations'], 'name'))->toBe(['Unidad', 'Blíster x 10 tabletas', 'Caja x 100 tabletas'])
         ->and(array_column($product['presentations'], 'base_factor'))->toBe([1.0, 10.0, 100.0])
         ->and($product['presentations'][0]['price'])->toBeNull()
         ->and($product['presentations'][2]['price'])->toBe(90.0)
@@ -202,15 +203,64 @@ it('mapea un servicio sin presentaciones ni inventario', function () {
         ->and($issues)->toContain('servicio_con_varias_tarifas');
 });
 
-it('limpia la marca final del nombre y conserva el original', function () {
-    ['product' => $product] = mapOnnebProduct(onnebProduct([
+it('limpia el nombre, conserva el original y pasa el contenido a la única presentación', function () {
+    ['product' => $product, 'issues' => $issues] = mapOnnebProduct(onnebProduct([
         'DESPROD' => 'DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)x',
         'DESPROD2' => 'DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)x',
         'DESPROD3' => 'DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)x',
     ]), [onnebPrice('CAJA', 1, 10)]);
 
-    expect($product['name'])->toBe('DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)')
-        ->and($product['description'])->toBe('DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)x');
+    expect($product['name'])->toBe('DOLKEFLAM 20mg')
+        ->and($product['description'])->toBe('DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)x')
+        ->and(array_column($product['presentations'], 'name'))->toBe(['Caja x 10 tabletas'])
+        ->and($issues)->toContain('marca_distinta');
+});
+
+it('pide confirmar el contenido que ninguna presentación trae', function () {
+    ['product' => $product, 'issues' => $issues] = mapOnnebProduct(onnebProduct([
+        'DESPROD' => 'TIRAS REACTIVAS PRODIGY x 100 UNIDADES (MK)',
+    ]), [onnebPrice('FRASCO', 1, 150), onnebPrice('CAJA', 2, 290)]);
+
+    expect($product['name'])->toBe('TIRAS REACTIVAS PRODIGY')
+        ->and(array_column($product['presentations'], 'name'))->toBe(['Frasco', 'Caja x 2'])
+        ->and($issues)->toContain('contenido_por_confirmar')
+        ->and($issues)->not->toContain('marca_distinta');
+});
+
+it('no adivina el contenido de una unidad suelta', function () {
+    ['product' => $product, 'issues' => $issues] = mapOnnebProduct(onnebProduct([
+        'DESPROD' => 'CEFADROXILO 500mg x50 TABLETAS (MK)',
+    ]), [onnebPrice('UNIDAD', 1, 3)]);
+
+    expect(array_column($product['presentations'], 'name'))->toBe(['Unidad'])
+        ->and($issues)->toContain('contenido_por_confirmar');
+});
+
+it('avisa si el laboratorio del nombre no es la marca de OnneB', function (string $label, string $brand, bool $flagged) {
+    $result = (new CatalogMapper)->map(onnebCatalog(
+        [onnebProduct(['DESPROD' => "JABON NEUTRO ({$label})x"])],
+        [onnebPrice('UNIDAD', 1, 10)],
+        [1 => $brand],
+    ));
+
+    expect(in_array('marca_distinta', array_column($result->issues, 'incidencia'), true))->toBe($flagged);
+})->with([
+    'igual' => ['MK', 'MK', false],
+    'error de digitación' => ['KIMBERLY CLARCK', 'KIMBERLY CLARK', false],
+    'abreviada' => ['CAPLIN', 'CAPLIN POINT', false],
+    'otro laboratorio' => ['COLGATE PALMOLIVE', 'P&G', true],
+    'marca genérica' => ['HP MEDICAL', 'VARIOS', true],
+]);
+
+it('permite conservar los nombres de OnneB', function () {
+    $result = (new CatalogMapper(cleanNames: false))->map(onnebCatalog(
+        [onnebProduct(['DESPROD' => 'DOLKEFLAM 20mg x10 TABLETAS (HEIDELG PHARMA)x'])],
+        [onnebPrice('CAJA', 1, 10)],
+    ));
+
+    expect($result->products[0]['name'])->toBe('DOLKEFLAM 20mg x10 TABLETAS (HEIDELG PHARMA)')
+        ->and(array_column($result->products[0]['presentations'], 'name'))->toBe(['Caja'])
+        ->and(array_column($result->issues, 'incidencia'))->not->toContain('marca_distinta');
 });
 
 it('aplica exención, marca genérica y límites de stock', function () {

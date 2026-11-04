@@ -2,6 +2,7 @@
 
 namespace RealsoftGt\OnneB\Mapping;
 
+use Illuminate\Support\Str;
 use RealsoftGt\OnneB\Data\Catalog;
 use RealsoftGt\OnneB\Data\MappedCatalog;
 use RealsoftGt\OnneB\Exceptions\OnneBException;
@@ -46,6 +47,8 @@ class CatalogMapper
         'barcode_en_uso' => 'revision',
         'servicio_con_varias_tarifas' => 'revision',
         'sku_duplicado' => 'revision',
+        'contenido_por_confirmar' => 'revision',
+        'marca_distinta' => 'revision',
         'costo_derivado' => 'informativo',
         'barcode_no_gtin' => 'informativo',
         'stock_maximo_invalido' => 'informativo',
@@ -110,16 +113,23 @@ class CatalogMapper
     /** @var array<string, array{0: string, 1: string}> */
     private readonly array $units;
 
+    private readonly NameCleaner $names;
+
     /** @var list<array{codprod: string, descripcion: string, incidencia: string, severidad: string, detalle: string}> */
     private array $issues = [];
 
     /**
      * @param  array<string, array{0: string, 1: string}>  $extraUnits  Medidas propias de la instalación.
      * @param  list<string>  $genericBrands  Marcas que no identifican a un fabricante.
+     * @param  bool  $cleanNames  Quita del nombre el laboratorio y el contenido del empaque.
      */
-    public function __construct(array $extraUnits = [], private readonly array $genericBrands = ['VARIOS'])
-    {
+    public function __construct(
+        array $extraUnits = [],
+        private readonly array $genericBrands = ['VARIOS'],
+        private readonly bool $cleanNames = true,
+    ) {
         $this->units = $extraUnits + self::DEFAULT_UNITS;
+        $this->names = new NameCleaner;
     }
 
     public function map(Catalog $catalog): MappedCatalog
@@ -261,6 +271,8 @@ class CatalogMapper
             [$presentations, $baseUnitPrice] = $this->resolvePresentations($product, $rows);
         }
 
+        $name = $this->cleanedName($product);
+        $presentations = $this->describeContent($product, $presentations, $name->content);
         $base = collect($presentations)->firstWhere('is_base', true);
         $cost = $this->baseCost($product, $presentations);
 
@@ -275,7 +287,7 @@ class CatalogMapper
         [$minStock, $maxStock] = $this->stockLimits($product);
 
         return [
-            ...$this->commonFields($product, $brands, $barcodeOwners, $skus),
+            ...$this->commonFields($product, $name, $brands, $barcodeOwners, $skus),
             'type' => 'good',
             'base_unit' => $base['unit'],
             'standard_cost' => $cost,
@@ -314,7 +326,7 @@ class CatalogMapper
         }
 
         return [
-            ...$this->commonFields($product, $brands, $barcodeOwners, $skus),
+            ...$this->commonFields($product, $this->cleanedName($product), $brands, $barcodeOwners, $skus),
             'type' => 'service',
             'base_unit' => self::BASE_UNIT,
             'standard_cost' => round(max(0, (float) $product['COSTO']), 4),
@@ -445,6 +457,50 @@ class CatalogMapper
     }
 
     /**
+     * El contenido que declaraba el nombre pasa a la presentación que lo trae,
+     * para que la factura diga qué se vendió: «Caja x 100 tabletas».
+     *
+     * @param  array<string, mixed>  $product
+     * @param  list<array<string, mixed>>  $presentations
+     * @param  ?array{count: int, display: string, singular: ?string, plural: ?string, text: string}  $content
+     * @return list<array<string, mixed>>
+     */
+    private function describeContent(array $product, array $presentations, ?array $content): array
+    {
+        if ($content === null || $content['count'] <= 1) {
+            return $presentations;
+        }
+
+        $matches = array_filter(
+            $presentations,
+            fn (array $presentation): bool => ! $presentation['is_base'] && $presentation['is_active'] && abs($presentation['base_factor'] - $content['count']) < 0.0001,
+        );
+
+        // Un paquete trae justo ese contenido: la base es una pieza y cada
+        // paquete trae su factor en piezas.
+        if ($matches !== []) {
+            foreach ($presentations as $index => $presentation) {
+                if ($content['plural'] !== null && ! $presentation['is_base'] && $presentation['base_factor'] > 1) {
+                    $presentations[$index]['name'] .= ' '.$content['plural'];
+                }
+            }
+
+            return $presentations;
+        }
+
+        // Se vende en un solo empaque: el contenido describe ese empaque.
+        if (count($presentations) === 1 && $presentations[0]['unit'] !== self::BASE_UNIT) {
+            $presentations[0]['name'] .= ' x '.$content['display'].' '.($content['plural'] ?? 'unidades');
+
+            return $presentations;
+        }
+
+        $this->issue($product, 'contenido_por_confirmar', "El nombre decía «{$content['text']}» y ninguna presentación trae {$content['display']}: se quitó del nombre. Confirme el contenido de cada presentación.");
+
+        return $presentations;
+    }
+
+    /**
      * Costo por unidad base. La fila base manda; si trae relleno, se deriva
      * del paquete más grande, cuyo costo es el que OnneB actualiza al comprar.
      *
@@ -516,10 +572,10 @@ class CatalogMapper
      * @param  array<string, int>  $skus
      * @return array<string, mixed>
      */
-    private function commonFields(array $product, array $brands, array $barcodeOwners, array $skus): array
+    private function commonFields(array $product, CleanedName $cleaned, array $brands, array $barcodeOwners, array $skus): array
     {
         $rawName = $this->singleLine((string) $product['DESPROD']);
-        $name = $this->cleanName($rawName);
+        $name = $cleaned->name;
         $alternative = collect([$product['DESPROD2'] ?? null, $product['DESPROD3'] ?? null])
             ->map(fn (?string $value): string => $this->singleLine((string) $value))
             ->first(fn (string $value): bool => $value !== '' && $value !== $rawName);
@@ -530,17 +586,23 @@ class CatalogMapper
             'name' => $name,
             // Conserva el texto original cuando el nombre se limpió.
             'description' => $alternative ?? ($name !== $rawName ? $rawName : null),
-            'brand' => $this->brand($product, $brands),
+            'brand' => $this->brand($product, $brands, $cleaned->label),
             'is_exempt' => (int) $product['EXENTO'] === 1,
         ];
     }
 
     /**
-     * Quita la marca `x` que OnneB deja tras el laboratorio: `(HERSIL)x`.
+     * Sin limpieza solo se quita la `x` que OnneB deja tras el laboratorio: `(HERSIL)x`.
+     *
+     * @param  array<string, mixed>  $product
      */
-    private function cleanName(string $name): string
+    private function cleanedName(array $product): CleanedName
     {
-        return preg_replace('/([)\]])\s*x$/iu', '$1', $name) ?? $name;
+        $name = $this->singleLine((string) $product['DESPROD']);
+
+        return $this->cleanNames
+            ? $this->names->clean($name)
+            : new CleanedName(preg_replace('/([)\]])\s*x$/iu', '$1', $name) ?? $name);
     }
 
     /**
@@ -575,11 +637,31 @@ class CatalogMapper
      * @param  array<string, mixed>  $product
      * @param  array<int|string, string>  $brands
      */
-    private function brand(array $product, array $brands): ?string
+    private function brand(array $product, array $brands, ?string $label): ?string
     {
         $brand = $this->singleLine((string) ($brands[$product['CODMARCA']] ?? ''));
 
+        // Sin el laboratorio en el nombre, la marca es lo único que lo muestra.
+        if ($label !== null && ! $this->sameMaker($label, $brand)) {
+            $this->issue($product, 'marca_distinta', "El nombre indicaba «{$label}» y la marca en OnneB es «".($brand === '' ? 'ninguna' : $brand).'»: se quitó del nombre y se conservó la marca.');
+        }
+
         return $brand === '' || in_array(mb_strtoupper($brand), $this->genericBrands, true) ? null : $brand;
+    }
+
+    /**
+     * Tolera abreviaturas y errores de digitación: «KIMBERLY CLARCK» es «KIMBERLY CLARK».
+     */
+    private function sameMaker(string $label, string $brand): bool
+    {
+        $normalize = fn (string $value): string => preg_replace('/[^A-Z0-9]/', '', mb_strtoupper(Str::ascii($value))) ?? '';
+        [$label, $brand] = [$normalize($label), $normalize($brand)];
+
+        if ($brand === '' || in_array($brand, array_map($normalize, $this->genericBrands), true)) {
+            return false;
+        }
+
+        return str_starts_with($label, $brand) || str_starts_with($brand, $label) || levenshtein($label, $brand) <= 3;
     }
 
     /**

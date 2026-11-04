@@ -14,6 +14,7 @@ revision-catalogo-20260115-081500.xlsx
 | **Resumen** | Empresa, origen, fecha de los datos, totales e incidencias con su significado y acción |
 | **Por corregir** | Una fila por incidencia, por prioridad y existencia, con costo, precio, margen y datos de OnneB |
 | **Presentaciones** | OnneB y destino lado a lado en los productos con dudas de factor o precio |
+| **Nombres** | Cada nombre que cambió: el de OnneB, el limpio, la marca y las presentaciones |
 | **Mayoreo** | Precios A, B y C que no se migran |
 | **Pendientes** | Tareas que reporta el importador, si existen |
 
@@ -24,7 +25,7 @@ La columna **Corregido** de **Por corregir** queda libre para control del equipo
 | Prioridad | Incidencias |
 |---|---|
 | Alta | Sin precio, Sin presentaciones, Sin costo, Costo mayor que el precio, Base ambigua, Factor no confiable, Precio invertido |
-| Media | Base implícita, Factor tomado de UXC, Precio incoherente, Código de barras compartido, Código de barras en uso, Servicio con varias tarifas, Código duplicado |
+| Media | Base implícita, Factor tomado de UXC, Precio incoherente, Código de barras compartido, Código de barras en uso, Servicio con varias tarifas, Código duplicado, Contenido por confirmar, Laboratorio distinto de la marca |
 | Baja | Costo derivado, Código de barras interno, Stock máximo inválido |
 
 ## Configuración

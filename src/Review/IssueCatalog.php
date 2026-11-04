@@ -116,6 +116,20 @@ class IssueCatalog
             'done' => 'Se conservó el primero.',
             'action' => 'Confirmar si es el mismo producto; si no, crearlo con otro código.',
         ],
+        'contenido_por_confirmar' => [
+            'label' => 'Contenido por confirmar',
+            'priority' => self::MEDIUM,
+            'meaning' => 'El nombre declaraba un contenido, como «X 100 TABLETAS», que ninguna presentación trae.',
+            'done' => 'Se quitó del nombre para no prometer en la factura lo que no se entrega. El original quedó en la descripción.',
+            'action' => 'Revisar el empaque físico y corregir el factor o el nombre de cada presentación.',
+        ],
+        'marca_distinta' => [
+            'label' => 'Laboratorio distinto de la marca',
+            'priority' => self::MEDIUM,
+            'meaning' => 'El laboratorio escrito en el nombre no coincide con la marca de OnneB, que es la que se verá al vender.',
+            'done' => 'Se quitó del nombre y se conservó la marca de OnneB. El nombre original quedó en la descripción.',
+            'action' => 'Confirmar el laboratorio con el empaque y corregir la marca del producto.',
+        ],
         'costo_derivado' => [
             'label' => 'Costo derivado',
             'priority' => self::LOW,

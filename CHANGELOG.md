@@ -4,6 +4,16 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
+### Agregado
+
+- Limpieza de nombres: se quitan el laboratorio final y el contenido del empaque, como `CAJA X 100 TABLETAS`, que pasa al nombre de la presentación. Se desactiva con `onneb.mapping.clean_names`.
+- Incidencias `contenido_por_confirmar` y `marca_distinta`.
+- Hoja **Nombres** en el Excel de revisión, con cada nombre antes y después.
+
+### Cambiado
+
+- Por defecto, el nombre del producto ya no incluye el laboratorio ni el contenido del empaque; el original queda en `description`.
+
 ## [1.0.1] - 2026-11-03
 
 ### Corregido

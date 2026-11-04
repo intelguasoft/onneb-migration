@@ -23,6 +23,7 @@ class OnneBServiceProvider extends ServiceProvider
         $this->app->bind(CatalogMapper::class, fn (Application $app): CatalogMapper => new CatalogMapper(
             $app['config']->get('onneb.mapping.extra_units', []),
             $app['config']->get('onneb.mapping.generic_brands', ['VARIOS']),
+            filter_var($app['config']->get('onneb.mapping.clean_names', true), FILTER_VALIDATE_BOOL),
         ));
 
         $this->app->bind(ReviewReport::class, fn (Application $app): ReviewReport => new ReviewReport(
