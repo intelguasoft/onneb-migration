@@ -4,6 +4,8 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
+## [1.1.0] - 2026-11-05
+
 ### Agregado
 
 - Limpieza de nombres: se quitan el laboratorio final y el contenido del empaque, como `CAJA X 100 TABLETAS`, que pasa al nombre de la presentación. Se desactiva con `onneb.mapping.clean_names`.
@@ -35,6 +37,7 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 - Comandos `onneb:export`, `onneb:verify`, `onneb:review` y `onneb:migrate`.
 - Soporte para Laravel 12 y 13 con PHP 8.3 o superior.
 
-[Sin publicar]: https://github.com/intelguasoft/onneb-migration/compare/v1.0.1...HEAD
+[Sin publicar]: https://github.com/intelguasoft/onneb-migration/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/intelguasoft/onneb-migration/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/intelguasoft/onneb-migration/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/intelguasoft/onneb-migration/releases/tag/v1.0.0
