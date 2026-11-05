@@ -31,7 +31,9 @@ class ReviewReport
     ) {}
 
     /**
-     * @return string Ruta absoluta del archivo.
+     * Guarda el libro completo y, junto a él, el de atención.
+     *
+     * @return string Ruta absoluta del libro completo.
      */
     public function store(Catalog $catalog, MappedCatalog $mapped, ImportResult $import, bool $dryRun): string
     {
@@ -39,6 +41,13 @@ class ReviewReport
 
         $products = collect($mapped->products)->keyBy(fn (array $product): string => $this->key($product['sku']));
         $prices = collect($catalog->prices)->groupBy(fn (array $row): string => $this->key($row['CODPROD']));
+
+        Excel::store(
+            new ReviewExport([$this->attentionSheet($import->issues, $products, $catalog->stock)]),
+            $this->attentionFile($path),
+            $this->disk,
+            ExcelFormat::XLSX,
+        );
 
         $sheets = [
             $this->summarySheet($catalog, $import, $dryRun),
@@ -55,6 +64,68 @@ class ReviewReport
         Excel::store(new ReviewExport($sheets), $path, $this->disk, ExcelFormat::XLSX);
 
         return Storage::disk($this->disk)->path($path);
+    }
+
+    /**
+     * Libro de atención que acompaña a un libro completo.
+     */
+    public function attentionPath(string $reportPath): string
+    {
+        return $this->attentionFile($reportPath);
+    }
+
+    private function attentionFile(string $reportPath): string
+    {
+        return preg_replace('/revision-catalogo-(?=[^\/\\\\]*$)/', 'atencion-catalogo-', $reportPath) ?? $reportPath;
+    }
+
+    /**
+     * Solo lo que requiere a una persona: una fila por producto, con todo lo
+     * que hay que revisar de él, por prioridad y luego por existencia.
+     *
+     * @param  list<array<string, string>>  $issues
+     * @param  Collection<string, array<string, mixed>>  $products
+     * @param  array<string, float>  $stock
+     */
+    private function attentionSheet(array $issues, Collection $products, array $stock): ReviewSheet
+    {
+        $rows = collect($issues)
+            ->filter(fn (array $issue): bool => $issue['severidad'] === 'revision')
+            ->groupBy(fn (array $issue): string => $this->key($issue['codprod']))
+            ->map(function (Collection $productIssues, string $key) use ($products, $stock): array {
+                $catalogs = $productIssues->map(fn (array $issue): array => IssueCatalog::ISSUES[$issue['incidencia']]);
+                $priority = $catalogs->sortBy(fn (array $issue): int => IssueCatalog::PRIORITIES[$issue['priority']])->first()['priority'];
+                $first = $productIssues->first();
+                $product = $products->get($key);
+
+                return [
+                    'order' => [IssueCatalog::PRIORITIES[$priority], -($stock[$key] ?? 0), $key],
+                    'row' => [
+                        $priority,
+                        $first['codprod'],
+                        $product['name'] ?? $first['descripcion'],
+                        $product['brand'] ?? '',
+                        $stock[$key] ?? 0,
+                        $catalogs->pluck('label')->unique()->join(', '),
+                        $productIssues->pluck('detalle')->unique()->join("\n"),
+                        $catalogs->pluck('action')->unique()->map(fn (string $action): string => "• {$action}")->join("\n"),
+                        implode(', ', array_column($product['presentations'] ?? [], 'name')),
+                        $first['descripcion'],
+                        '',
+                        '',
+                        '',
+                    ],
+                ];
+            })
+            ->sortBy('order')
+            ->pluck('row')
+            ->values()
+            ->all();
+
+        return new ReviewSheet('Atención', [
+            ['Prioridad', 'Código', 'Producto', 'Marca', 'Existencia OnneB', 'Qué revisar', 'Detalle', 'Qué hacer', "Presentaciones en {$this->targetName}", 'Nombre en OnneB', 'Corregido', 'Responsable', 'Notas'],
+            ...$rows,
+        ], wrapFrom: 6);
     }
 
     private function summarySheet(Catalog $catalog, ImportResult $import, bool $dryRun): ReviewSheet

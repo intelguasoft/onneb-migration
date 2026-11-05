@@ -27,7 +27,8 @@ class ReviewCommand extends Command
             $this->components->twoColumnDetail($label, (string) $value);
         }
 
-        $this->components->info("Revisión: {$result->reportPath}");
+        $this->components->info("Atención: {$result->attentionPath}");
+        $this->components->info("Revisión completa: {$result->reportPath}");
 
         return self::SUCCESS;
     }

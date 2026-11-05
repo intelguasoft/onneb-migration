@@ -1,13 +1,27 @@
 # Excel de revisión
 
-Cada corrida genera un libro en `storage/app/private/onneb/`:
+Cada corrida genera dos libros en `storage/app/private/onneb/`:
 
 ```text
+atencion-catalogo-20260115-080000-simulacion.xlsx
 revision-catalogo-20260115-080000-simulacion.xlsx
-revision-catalogo-20260115-081500.xlsx
 ```
 
-## Hojas
+## Libro de atención
+
+Es por donde empieza el equipo. Trae una sola hoja, **Atención**, con lo que requiere a una persona:
+
+- Una fila por producto, aunque tenga varias incidencias, con todas juntas.
+- Solo incidencias de revisión; las informativas, como un costo derivado, quedan en el libro completo.
+- Ordenado por prioridad y, dentro de cada prioridad, por existencia en OnneB: primero lo que más se vende y está en bodega.
+- Columnas **Qué revisar**, **Detalle** y **Qué hacer**, y tres libres para el equipo: **Corregido**, **Responsable** y **Notas**.
+
+`MigrationResult::$attentionPath` devuelve su ruta.
+
+## Libro completo
+
+| Hoja | Contenido |
+|---|---|
 
 | Hoja | Contenido |
 |---|---|

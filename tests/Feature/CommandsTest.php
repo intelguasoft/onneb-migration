@@ -66,7 +66,10 @@ it('genera la revisión desde cualquier origen', function (string $source) {
 
     $this->artisan('onneb:review', ['--source' => $source])->assertSuccessful();
 
-    expect(Storage::disk('local')->files('onneb'))->toHaveCount(1);
+    $files = array_map('basename', Storage::disk('local')->files('onneb'));
+
+    expect($files)->toHaveCount(2)
+        ->and(implode(' ', $files))->toContain('atencion-catalogo-', 'revision-catalogo-');
 })->with(['snapshot', 'database']);
 
 it('exige un importador registrado para migrar', function () {

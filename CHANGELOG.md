@@ -9,6 +9,7 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 - Limpieza de nombres: se quitan el laboratorio final y el contenido del empaque, como `CAJA X 100 TABLETAS`, que pasa al nombre de la presentación. Se desactiva con `onneb.mapping.clean_names`.
 - Incidencias `contenido_por_confirmar` y `marca_distinta`.
 - Hoja **Nombres** en el Excel de revisión, con cada nombre antes y después.
+- Libro de atención (`atencion-catalogo-*.xlsx`) junto al de revisión: una fila por producto que requiere a una persona, por prioridad y existencia, con columnas para responsable y notas. Su ruta está en `MigrationResult::$attentionPath`.
 - Escritura uniforme de nombres: texto en mayúsculas y medidas en su notación, separadas del número y sin punto (`500 mg`, `250 mg/5 mL`, `30 g`). Los calibres de agujas y catéteres no se tocan.
 
 ### Cambiado

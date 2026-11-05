@@ -87,6 +87,21 @@ it('genera el Excel con el contexto para corregir', function (string $source) {
         ->and($book['Pendientes'][1][0])->toBe('Inventario');
 })->with(['snapshot', 'database']);
 
+it('separa en otro libro solo lo que requiere a una persona', function () {
+    DB::connection('fixture')->table('PRECIOS')->where('ID', 1)->update(['COSTO' => '0.0100']);
+    app(SnapshotWriter::class)->write($this->snapshotPath());
+
+    $result = app(OnneBMigrator::class)->run(new RecordingImporter);
+    $rows = workbook($result->attentionPath)['Atención'];
+    $codes = array_column(array_slice($rows, 1), 1);
+
+    expect($result->attentionPath)->toEndWith('-simulacion.xlsx')->toContain('atencion-catalogo-')
+        ->and($rows[0])->toBe(['Prioridad', 'Código', 'Producto', 'Marca', 'Existencia OnneB', 'Qué revisar', 'Detalle', 'Qué hacer', 'Presentaciones en Destino', 'Nombre en OnneB', 'Corregido', 'Responsable', 'Notas'])
+        ->and($codes)->toBe(array_values(array_unique($codes)))
+        ->and(collect($rows)->firstWhere(1, '1006')[5])->toBe('Sin precio')
+        ->and(collect($rows)->pluck(5)->implode(' '))->not->toContain('Costo derivado');
+});
+
 it('omite la hoja de pendientes si el importador no reporta ninguno', function () {
     $result = app(OnneBMigrator::class)->run(new NullImporter);
 

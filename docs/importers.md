@@ -94,8 +94,9 @@ public function run(OnneBMigrator $migrator): void
 {
     $result = $migrator->run(new ProductImporter($company), dryRun: false);
 
-    $this->command?->info("Revisión: {$result->reportPath}");
+    $this->command?->info("Atención: {$result->attentionPath}");
+    $this->command?->info("Revisión completa: {$result->reportPath}");
 }
 ```
 
-`run()` simula por defecto. Cada corrida, simulada o real, genera el Excel.
+`run()` simula por defecto. Cada corrida, simulada o real, genera los dos libros de Excel.

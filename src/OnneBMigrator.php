@@ -30,6 +30,6 @@ class OnneBMigrator
         $import = $importer->import($mapped, $dryRun);
         $path = $this->report->store($catalog, $mapped, $import, $dryRun);
 
-        return new MigrationResult($catalog, $mapped, $import, $dryRun, $path);
+        return new MigrationResult($catalog, $mapped, $import, $dryRun, $path, $this->report->attentionPath($path));
     }
 }

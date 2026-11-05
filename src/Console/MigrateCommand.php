@@ -46,7 +46,8 @@ class MigrateCommand extends Command
         }
 
         $this->components->info($execute ? 'Catálogo importado.' : 'Simulación: no se escribió nada.');
-        $this->components->info("Revisión: {$result->reportPath}");
+        $this->components->info("Atención: {$result->attentionPath}");
+        $this->components->info("Revisión completa: {$result->reportPath}");
 
         return self::SUCCESS;
     }
