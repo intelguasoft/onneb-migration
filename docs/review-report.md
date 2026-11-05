@@ -22,9 +22,6 @@ Es por donde empieza el equipo. Trae una sola hoja, **Atención**, con lo que re
 
 | Hoja | Contenido |
 |---|---|
-
-| Hoja | Contenido |
-|---|---|
 | **Resumen** | Empresa, origen, fecha de los datos, totales e incidencias con su significado y acción |
 | **Por corregir** | Una fila por incidencia, por prioridad y existencia, con costo, precio, margen y datos de OnneB |
 | **Presentaciones** | OnneB y destino lado a lado en los productos con dudas de factor o precio |
