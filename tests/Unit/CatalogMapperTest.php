@@ -56,7 +56,7 @@ it('usa como base la fila con factor 1 y conserva los demás factores', function
         ->and($product['price'])->toBe(2.0)
         ->and($product['standard_cost'])->toBe(0.5)
         ->and($product['name'])->toBe('ACETAMINOFEN')
-        ->and(array_column($product['presentations'], 'name'))->toBe(['Unidad', 'Blíster x 10 tabletas', 'Caja x 100 tabletas'])
+        ->and(array_column($product['presentations'], 'name'))->toBe(['Tableta', 'Blíster x 10 tabletas', 'Caja x 100 tabletas'])
         ->and(array_column($product['presentations'], 'base_factor'))->toBe([1.0, 10.0, 100.0])
         ->and($product['presentations'][0]['price'])->toBeNull()
         ->and($product['presentations'][2]['price'])->toBe(90.0)
@@ -210,7 +210,7 @@ it('limpia el nombre, conserva el original y pasa el contenido a la única prese
         'DESPROD3' => 'DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)x',
     ]), [onnebPrice('CAJA', 1, 10)]);
 
-    expect($product['name'])->toBe('DOLKEFLAM 20mg')
+    expect($product['name'])->toBe('DOLKEFLAM 20 mg')
         ->and($product['description'])->toBe('DOLKEFLAM 20mg x10 TABLETASx (HEIDELG PHARMA)x')
         ->and(array_column($product['presentations'], 'name'))->toBe(['Caja x 10 tabletas'])
         ->and($issues)->toContain('marca_distinta');
@@ -225,6 +225,20 @@ it('pide confirmar el contenido que ninguna presentación trae', function () {
         ->and(array_column($product['presentations'], 'name'))->toBe(['Frasco', 'Caja x 2'])
         ->and($issues)->toContain('contenido_por_confirmar')
         ->and($issues)->not->toContain('marca_distinta');
+});
+
+it('no repite el empaque en el nombre de la presentación', function () {
+    ['product' => $product] = mapOnnebProduct(onnebProduct([
+        'DESPROD' => 'LINCOMICINA x 6 AMPOLLAS [MK]',
+    ]), [onnebPrice('AMPOLLA', 1, 12), onnebPrice('CAJA', 6, 70)]);
+
+    expect(array_column($product['presentations'], 'name'))->toBe(['Ampolla', 'Caja x 6 ampollas']);
+
+    ['product' => $single] = mapOnnebProduct(onnebProduct([
+        'DESPROD' => 'NEUROBION x 5 AMPOLLAS [MK]',
+    ]), [onnebPrice('AMPOLLA', 1, 90)]);
+
+    expect(array_column($single['presentations'], 'name'))->toBe(['Ampolla x 5']);
 });
 
 it('no adivina el contenido de una unidad suelta', function () {

@@ -80,24 +80,54 @@ OnneB mezcla en la descripción el laboratorio y el empaque. En una factura, `TI
 
 | OnneB | Nombre | Presentaciones |
 |---|---|---|
-| `ACETAMINOFEN 500MG CAJA X 100 TABLETAS [MK]` | `ACETAMINOFEN 500MG` | Unidad, Blíster x 10 tabletas, Caja x 100 tabletas |
-| `LOSARTAN 100 MG X 30 TABLETAS [ECAR]` | `LOSARTAN 100 MG` | Caja x 30 tabletas |
-| `REFORZADEC NIÑOS x25 AMPOLLAS DE 5ml (BIOVAL)` | `REFORZADEC NIÑOS 5ml` | Ampolla, Caja x 25 ampollas |
+| `ACETAMINOFEN 500MG CAJA X 100 TABLETAS [MK]` | `ACETAMINOFEN 500 mg` | Tableta, Blíster x 10 tabletas, Caja x 100 tabletas |
+| `LOSARTAN 100 MG X 30 TABLETAS [ECAR]` | `LOSARTAN 100 mg` | Caja x 30 tabletas |
+| `REFORZADEC NIÑOS x25 AMPOLLAS DE 5ml (BIOVAL)` | `REFORZADEC NIÑOS 5 mL` | Ampolla, Caja x 25 ampollas |
+| `GANOL 120mg/5ml JARABE sabor a fresa` | `GANOL 120 mg/5 mL JARABE SABOR A FRESA` | Frasco |
 
 Reglas:
 
 - Se quita el texto final entre paréntesis o corchetes, que en OnneB es el laboratorio, y la `x` que suele seguirlo.
 - Se quita el contenido del empaque, como `X 30 TABLETAS`, `*30 TABLETAS`, `X 25 SOBRES X 4 CAPSULAS` o `X 30+15 TABLETAS`, junto con la palabra de empaque que lo antecede (`CAJA`, `DISPENSADOR`, `FRASCO`...).
-- Se conservan la concentración (`500MG`), el tamaño (`120 ML`, que solo pierde la `X`), las medidas (`6 X 10 YDS`), los paréntesis intermedios, como un principio activo, y la forma farmacéutica (`TABLETAS MASTICABLES`).
+- Se conservan la concentración, el tamaño (`120 mL`, que solo pierde la `X`), las medidas (`6 X 10 yd`), los paréntesis intermedios, como un principio activo, y la forma farmacéutica (`TABLETAS MASTICABLES`).
 - El nombre original queda en `description`, salvo que `DESPROD2` o `DESPROD3` traigan otro texto.
+
+### Escritura uniforme
+
+Cada nombre se escribe de una sola forma, para que dos productos iguales no se vean distintos:
+
+- El texto va en mayúsculas.
+- Cada medida va separada del número, en su notación y sin punto final:
+
+| En OnneB | Queda |
+|---|---|
+| `MG`, `MG.`, `mg` | `mg` |
+| `MCG`, `UG` | `mcg` |
+| `G`, `GR`, `GR.`, `GRS`, `GRM`, `GMS`, `GRAMOS` | `g` |
+| `KG`, `KGS` | `kg` |
+| `ML`, `ML.`, `ml`, `CC` | `mL` |
+| `L`, `LT`, `LTS`, `LITROS` | `L` |
+| `UI`, `U.I.` | `UI` |
+| `OZ`, `Oz`, `ONZ`, `ONZAS` | `oz` |
+| `LB`, `LIBRA`, `LIBRAS` | `lb` |
+| `CM`, `MM`, `MTS`, `YDS`, `YARDAS` | `cm`, `mm`, `m`, `yd` |
+
+- Las razones quedan como `250 mg/5 mL`, y el porcentaje va pegado: `5%`.
+- Una medida pegada a la palabra anterior se separa: `SUSPENSION120 ML` queda `SUSPENSION 120 mL`.
+- Se quitan la `x` suelta al final y el punto tras una palabra completa. El punto de una abreviatura, como `SOL. OFT.` o `I.M.`, se conserva.
+- En agujas, jeringas, catéteres, lancetas y suturas, la `G` es el calibre y no se toca: `21G`, `#23 GR`.
+
+### Presentaciones
 
 El contenido se pasa a las presentaciones así:
 
 | Caso | Resultado | Incidencia |
 |---|---|---|
-| Una presentación trae justo ese contenido | Cada paquete suma el sustantivo: `Caja x 100 tabletas` | Ninguna |
+| Una presentación trae justo ese contenido | La base toma el nombre de la pieza y cada paquete suma el sustantivo: `Tableta`, `Caja x 100 tabletas` | Ninguna |
 | El producto tiene una sola presentación, que no es Unidad | Esa presentación lo declara: `Caja x 30 tabletas` | Ninguna |
 | Ninguna presentación coincide | No se inventa el dato | `contenido_por_confirmar` |
+
+El empaque no se repite: queda `Caja x 6 ampollas`, nunca `Ampolla x 6 ampollas` ni `Caja x 4 cajas`.
 
 Si el laboratorio del nombre no se parece a la marca de OnneB, se conserva la marca y se reporta `marca_distinta`: sin el laboratorio en el nombre, la marca es lo único que lo muestra al vender. Se toleran abreviaturas y errores de digitación, como `KIMBERLY CLARCK` frente a `KIMBERLY CLARK`.
 
@@ -109,7 +139,7 @@ La hoja **Nombres** del Excel lista cada cambio. Para conservar los nombres de O
 ],
 ```
 
-Sin limpieza solo se quitan los espacios repetidos y la `x` tras el laboratorio. Las marcas de `onneb.mapping.generic_brands` no se asignan; por defecto, `VARIOS`.
+Sin limpieza no se aplica la escritura uniforme: solo se quitan los espacios repetidos y la `x` tras el laboratorio. Las marcas de `onneb.mapping.generic_brands` no se asignan; por defecto, `VARIOS`.
 
 ## Medidas
 

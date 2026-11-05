@@ -480,7 +480,14 @@ class CatalogMapper
         // paquete trae su factor en piezas.
         if ($matches !== []) {
             foreach ($presentations as $index => $presentation) {
-                if ($content['plural'] !== null && ! $presentation['is_base'] && $presentation['base_factor'] > 1) {
+                if ($content['singular'] === null) {
+                    break;
+                }
+
+                // «Tableta | Caja x 100 tabletas» dice más que «Unidad | Caja x 100».
+                if ($presentation['is_base'] && $presentation['unit'] === self::BASE_UNIT) {
+                    $presentations[$index]['name'] = mb_strtoupper(mb_substr($content['singular'], 0, 1)).mb_substr($content['singular'], 1);
+                } elseif (! $presentation['is_base'] && $presentation['base_factor'] > 1 && ! $this->namesItself($presentation, $content)) {
                     $presentations[$index]['name'] .= ' '.$content['plural'];
                 }
             }
@@ -490,7 +497,7 @@ class CatalogMapper
 
         // Se vende en un solo empaque: el contenido describe ese empaque.
         if (count($presentations) === 1 && $presentations[0]['unit'] !== self::BASE_UNIT) {
-            $presentations[0]['name'] .= ' x '.$content['display'].' '.($content['plural'] ?? 'unidades');
+            $presentations[0]['name'] .= ' x '.$content['display'].($this->namesItself($presentations[0], $content) ? '' : ' '.($content['plural'] ?? 'unidades'));
 
             return $presentations;
         }
@@ -498,6 +505,19 @@ class CatalogMapper
         $this->issue($product, 'contenido_por_confirmar', "El nombre decía «{$content['text']}» y ninguna presentación trae {$content['display']}: se quitó del nombre. Confirme el contenido de cada presentación.");
 
         return $presentations;
+    }
+
+    /**
+     * Evita «Ampolla x 5 ampollas» o «Caja x 4 cajas».
+     *
+     * @param  array<string, mixed>  $presentation
+     * @param  array{count: int, display: string, singular: ?string, plural: ?string, text: string}  $content
+     */
+    private function namesItself(array $presentation, array $content): bool
+    {
+        $unit = mb_strtolower(Str::ascii($this->units[$presentation['unit']][1]));
+
+        return $content['singular'] !== null && str_starts_with($unit, mb_strtolower(Str::ascii($content['singular'])));
     }
 
     /**

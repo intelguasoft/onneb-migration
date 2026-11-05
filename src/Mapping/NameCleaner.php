@@ -9,7 +9,7 @@ namespace RealsoftGt\OnneB\Mapping;
  * «ACETAMINOFEN 500MG CAJA X 100 TABLETAS [MK]». La marca ya viaja en su campo
  * y el contenido pertenece a la presentación: en el nombre confunde al vender
  * una fracción del empaque. Solo se quita lo que se reconoce con certeza; la
- * concentración, el tamaño y el resto del texto no se tocan.
+ * concentración y el tamaño se conservan, escritos siempre de la misma forma.
  */
 class NameCleaner
 {
@@ -18,7 +18,7 @@ class NameCleaner
 
     /** Lo que cuenta el contenido => [singular, plural] para la presentación. */
     private const NOUNS = [
-        'TABLETAS?|TABS?' => ['tableta', 'tabletas'],
+        'TABLETAS?|TABS?|TABELTAS' => ['tableta', 'tabletas'],
         'C[AÁ]PSULAS?|CAPS?|CAPUSLAS' => ['cápsula', 'cápsulas'],
         'GRAGEAS?' => ['gragea', 'grageas'],
         'COMPRIMIDOS?|COMRPIMIDOS|COMPRIMDIOS|COMRPIMDOS' => ['comprimido', 'comprimidos'],
@@ -66,7 +66,28 @@ class NameCleaner
     ];
 
     /** Medidas de tamaño: se conservan, solo pierden la «X» del empaque. */
-    private const MEASURES = 'MLS?|CC|LTS?|LITROS?|L|GRS?|GRAMOS?|G|KGS?|MG|MCG|OZ|LBS?|LIBRAS?|MTS?|CM|M|YDS?|YARDAS?';
+    private const MEASURES = 'MLS?|CC|LTS?|LITROS?|L|GRS?|GRAMOS?|G|KGS?|MG|MCG|ONZAS?|ONZ|OZ|LBS?|LIBRAS?|MTS?|CMS?|M|YDS?|YARDAS?';
+
+    /** Cada forma en que OnneB escribe una medida => su notación uniforme. */
+    private const UNITS = [
+        'MCG|UG' => 'mcg',
+        'MG' => 'mg',
+        'KGS?' => 'kg',
+        'GRAMOS?|GRMS?|GMS|GRS?|G' => 'g',
+        'MLS?|CC' => 'mL',
+        'LITROS?|LTS?|L' => 'L',
+        'U\.I|UI' => 'UI',
+        'MEQ' => 'mEq',
+        'ONZAS?|OZN|ONZ|OZ' => 'oz',
+        'LIBRAS?|LBS?' => 'lb',
+        'CMS?' => 'cm',
+        'MM' => 'mm',
+        'METROS?|MTS?' => 'm',
+        'YARDAS?|YDS?' => 'yd',
+    ];
+
+    /** En agujas y catéteres la «G» es el calibre, no gramos: «21G», «#23 GR». */
+    private const GAUGED = '/\b(?:AGUJAS?|JERINGAS?|CATETER|ANGIOCATH|SCALP|LANCETAS?|HIPODERMICAS?|CANULAS?|SUTURAS?)\b/u';
 
     /** Formas farmacéuticas que justifican conservar el sustantivo: «TABLETAS MASTICABLES». */
     private const FORMS = 'MASTICABLES?|RECUBIERTAS?|RECUBIERTOS?|BEBIBLES?|BEBILES?|EFERVESCENTES?|ORODISPERSABLES?|DISPERSABLES?|SUBLINGUALES?|VAGINALES?|GASTRORRESISTENTES?|SOLUBLES?|DE\s+GELATINA\s+BLANDA|DE\s+LIBERACI[OÓ]N\s+[A-ZÁÉÍÓÚ]+';
@@ -92,6 +113,8 @@ class NameCleaner
         if (count(explode(' ', $withoutPack)) >= 2) {
             $text = $withoutPack;
         }
+
+        $text = $this->uniform($text);
 
         // Sin letras no queda un nombre: mejor el original que uno vacío.
         if (! preg_match('/\p{L}{2,}/u', $text)) {
@@ -166,6 +189,54 @@ class NameCleaner
         }
 
         return [$text, null];
+    }
+
+    /**
+     * Una sola forma de escribir: el texto en mayúsculas y cada medida separada
+     * del número, en su notación y sin punto: «500 mg», «250 mg/5 mL», «30 g».
+     */
+    private function uniform(string $text): string
+    {
+        $text = mb_strtoupper($text);
+        $gauged = preg_match(self::GAUGED, $text) === 1;
+        $units = implode('|', array_keys(self::UNITS));
+
+        // Una medida pegada a la palabra anterior: «SUSPENSION120 ML».
+        $text = preg_replace('/(?<=\p{L}{3})(\d{2,}(?:[.,]\d+)?\s*(?:'.$units.')\.?)(?![\p{L}\d])/u', ' $1', $text) ?? $text;
+
+        $text = preg_replace_callback(
+            '/(?<![\p{L}\d#.,])(\d+(?:[.,]\d+)?)\s*('.$units.')\.?(?![\p{L}\d])/u',
+            fn (array $match): string => $gauged && preg_match('/^(?:GRS?|G)$/', $match[2])
+                ? $match[0]
+                : $match[1].' '.$this->unit($match[2]),
+            $text,
+        ) ?? $text;
+
+        // La medida de una razón sin número: «8 mg/ML» es «8 mg/mL».
+        $text = preg_replace_callback(
+            '/\/\s*('.$units.')\.?(?![\p{L}\d])/u',
+            fn (array $match): string => '/'.$this->unit($match[1]),
+            $text,
+        ) ?? $text;
+
+        $text = preg_replace('/(\d)\s+%/u', '$1%', $text) ?? $text;
+
+        // La «x» suelta al final, y el punto tras una palabra completa; el de
+        // una abreviatura como «SOL. OFT.» o «I.M.» se conserva.
+        $text = preg_replace('/\sX$/u', '', $this->tidy($text)) ?? $text;
+
+        return preg_replace('/(\s\p{L}{4,})\.$/u', '$1', $this->tidy($text)) ?? $text;
+    }
+
+    private function unit(string $written): string
+    {
+        foreach (self::UNITS as $pattern => $unit) {
+            if (preg_match('/^(?:'.$pattern.')$/u', $written)) {
+                return $unit;
+            }
+        }
+
+        return $written;
     }
 
     /**
