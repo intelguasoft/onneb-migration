@@ -676,8 +676,14 @@ class CatalogMapper
     {
         $normalize = fn (string $value): string => preg_replace('/[^A-Z0-9]/', '', mb_strtoupper(Str::ascii($value))) ?? '';
         [$label, $brand] = [$normalize($label), $normalize($brand)];
+        $generic = array_map($normalize, $this->genericBrands);
 
-        if ($brand === '' || in_array($brand, array_map($normalize, $this->genericBrands), true)) {
+        // «(VARIOS)» no nombra a ningún laboratorio: no hay nada que confirmar.
+        if (in_array($label, $generic, true)) {
+            return true;
+        }
+
+        if ($brand === '' || in_array($brand, $generic, true)) {
             return false;
         }
 

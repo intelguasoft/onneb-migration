@@ -264,6 +264,7 @@ it('avisa si el laboratorio del nombre no es la marca de OnneB', function (strin
     'abreviada' => ['CAPLIN', 'CAPLIN POINT', false],
     'otro laboratorio' => ['COLGATE PALMOLIVE', 'P&G', true],
     'marca genérica' => ['HP MEDICAL', 'VARIOS', true],
+    'nombre genérico' => ['VARIOS', 'VARIOS', false],
 ]);
 
 it('permite conservar los nombres de OnneB', function () {
