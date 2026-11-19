@@ -35,8 +35,8 @@ La columna **Corregido** de **Por corregir** queda libre para control del equipo
 
 | Prioridad | Incidencias |
 |---|---|
-| Alta | Sin precio, Sin presentaciones, Sin costo, Costo mayor que el precio, Base ambigua, Factor no confiable, Precio invertido |
-| Media | Base implícita, Factor tomado de UXC, Precio incoherente, Código de barras compartido, Código de barras en uso, Servicio con varias tarifas, Código duplicado, Contenido por confirmar, Laboratorio distinto de la marca |
+| Alta | Sin precio, Sin presentaciones, Sin costo, Costo mayor que el precio, Mayoreo bajo el costo, Base ambigua, Factor no confiable, Precio invertido |
+| Media | Base implícita, Factor tomado de UXC, Precio incoherente, Mayoreo más caro que el público, Código de barras compartido, Código de barras en uso, Servicio con varias tarifas, Código duplicado, Contenido por confirmar, Laboratorio distinto de la marca |
 | Baja | Costo derivado, Código de barras interno, Stock máximo inválido |
 
 ## Configuración

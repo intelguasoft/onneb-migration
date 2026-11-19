@@ -18,6 +18,20 @@ class IssueCatalog
 
     /** @var array<string, array{label: string, priority: string, meaning: string, done: string, action: string}> */
     public const ISSUES = [
+        'mayoreo_bajo_costo' => [
+            'label' => 'Mayoreo bajo el costo',
+            'priority' => self::HIGH,
+            'meaning' => 'Un precio de mayoreo de OnneB es menor que el costo de esa presentación: se vendería con pérdida.',
+            'done' => 'Se cargó tal cual en su lista de precios.',
+            'action' => 'Revisar el costo y el precio de mayoreo antes de venderle a ese tipo de cliente.',
+        ],
+        'mayoreo_mayor_precio' => [
+            'label' => 'Mayoreo más caro que el público',
+            'priority' => self::MEDIUM,
+            'meaning' => 'Un precio de mayoreo de OnneB es mayor que el precio al público.',
+            'done' => 'Se cargó tal cual en su lista de precios.',
+            'action' => 'Confirmar el precio de mayoreo o corregirlo en la lista.',
+        ],
         'sin_precio' => [
             'label' => 'Sin precio',
             'priority' => self::HIGH,

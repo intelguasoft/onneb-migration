@@ -24,6 +24,10 @@ class OnneBServiceProvider extends ServiceProvider
             $app['config']->get('onneb.mapping.extra_units', []),
             $app['config']->get('onneb.mapping.generic_brands', ['VARIOS']),
             filter_var($app['config']->get('onneb.mapping.clean_names', true), FILTER_VALIDATE_BOOL),
+            array_values(array_intersect(['A', 'B', 'C'], array_map(
+                fn (string $tier): string => mb_strtoupper(trim($tier)),
+                (array) $app['config']->get('onneb.mapping.wholesale_tiers', ['A', 'B', 'C']),
+            ))),
         ));
 
         $this->app->bind(ReviewReport::class, fn (Application $app): ReviewReport => new ReviewReport(

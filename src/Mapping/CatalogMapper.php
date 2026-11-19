@@ -49,6 +49,8 @@ class CatalogMapper
         'sku_duplicado' => 'revision',
         'contenido_por_confirmar' => 'revision',
         'marca_distinta' => 'revision',
+        'mayoreo_mayor_precio' => 'revision',
+        'mayoreo_bajo_costo' => 'revision',
         'costo_derivado' => 'informativo',
         'barcode_no_gtin' => 'informativo',
         'stock_maximo_invalido' => 'informativo',
@@ -122,11 +124,13 @@ class CatalogMapper
      * @param  array<string, array{0: string, 1: string}>  $extraUnits  Medidas propias de la instalación.
      * @param  list<string>  $genericBrands  Marcas que no identifican a un fabricante.
      * @param  bool  $cleanNames  Quita del nombre el laboratorio y el contenido del empaque.
+     * @param  list<string>  $wholesaleTiers  Mayoreos de OnneB (A, B, C) que se revisan contra precio y costo.
      */
     public function __construct(
         array $extraUnits = [],
         private readonly array $genericBrands = ['VARIOS'],
         private readonly bool $cleanNames = true,
+        private readonly array $wholesaleTiers = ['A', 'B', 'C'],
     ) {
         $this->units = $extraUnits + self::DEFAULT_UNITS;
         $this->names = new NameCleaner;
@@ -194,7 +198,7 @@ class CatalogMapper
 
     /**
      * @param  list<array<string, mixed>>  $prices
-     * @return array<string, list<array{id: int, unit: string, factor: float, price: float, cost: float}>>
+     * @return array<string, list<array{id: int, unit: string, factor: float, price: float, cost: float, wholesale: array{A: float, B: float, C: float}}>>
      */
     private function groupPrices(array $prices): array
     {
@@ -216,6 +220,11 @@ class CatalogMapper
                 'factor' => (float) $row['EQUIVALE'],
                 'price' => (float) $row['PRECIO'],
                 'cost' => (float) $row['COSTO'],
+                'wholesale' => [
+                    'A' => (float) $row['MAYOREOA'],
+                    'B' => (float) $row['MAYOREOB'],
+                    'C' => (float) $row['MAYOREOC'],
+                ],
             ];
         }
 
@@ -283,6 +292,8 @@ class CatalogMapper
         if ($baseUnitPrice !== null && $cost > $baseUnitPrice) {
             $this->issue($product, 'costo_mayor_precio', "Costo base {$cost} mayor que el precio base {$baseUnitPrice}.");
         }
+
+        $this->checkWholesale($product, $presentations, $baseUnitPrice);
 
         [$minStock, $maxStock] = $this->stockLimits($product);
 
@@ -358,7 +369,7 @@ class CatalogMapper
             $this->issue($product, 'base_ambigua', 'Varias presentaciones declaran factor 1; se usó como base '.$base['unit'].', la de menor precio.');
         }
 
-        $presentations = [$this->presentation($base['unit'], 1.0, null, true, cost: $base['cost'])];
+        $presentations = [$this->presentation($base['unit'], 1.0, null, true, cost: $base['cost'], wholesale: $base['wholesale'])];
 
         foreach (array_slice($rows, 1) as $row) {
             $presentation = $row['factor'] === $minFactor
@@ -389,11 +400,11 @@ class CatalogMapper
             $this->issue($product, 'factor_no_confiable', "UNIDAD declara factor {$unitRow['factor']}: se dejó como base con factor 1 y las demás presentaciones inactivas.");
 
             $basePrice = $unitRow['price'] > 0 ? $unitRow['price'] : null;
-            $presentations = [$this->presentation(self::BASE_UNIT, 1.0, null, true, cost: $unitRow['cost'])];
+            $presentations = [$this->presentation(self::BASE_UNIT, 1.0, null, true, cost: $unitRow['cost'], wholesale: $unitRow['wholesale'])];
 
             foreach ($rows as $row) {
                 if ($row['id'] !== $unitRow['id']) {
-                    $presentations[] = $this->presentation($row['unit'], $row['factor'], $row['price'], false, active: false, cost: $row['cost']);
+                    $presentations[] = $this->presentation($row['unit'], $row['factor'], $row['price'], false, active: false, cost: $row['cost'], wholesale: $row['wholesale']);
                 }
             }
 
@@ -406,7 +417,7 @@ class CatalogMapper
         $presentations = [$this->presentation(self::BASE_UNIT, 1.0, null, true, sellable: false, purchasable: false)];
 
         foreach ($rows as $row) {
-            $presentations[] = $this->presentation($row['unit'], $row['factor'], $row['price'] > 0 ? $row['price'] : null, false, cost: $row['cost']);
+            $presentations[] = $this->presentation($row['unit'], $row['factor'], $row['price'] > 0 ? $row['price'] : null, false, cost: $row['cost'], wholesale: $row['wholesale']);
         }
 
         return [
@@ -429,10 +440,10 @@ class CatalogMapper
         if ($isBoxOverUnit && $basePrice !== null && $row['price'] > $basePrice && $basePrice >= $row['price'] / $unitsPerBox) {
             $this->issue($product, 'factor_por_uxc', "CAJA toma su factor de UXC ({$unitsPerBox}) porque OnneB declara 1.");
 
-            return $this->presentation('CAJA', $unitsPerBox, $row['price'], false, cost: $row['cost']);
+            return $this->presentation('CAJA', $unitsPerBox, $row['price'], false, cost: $row['cost'], wholesale: $row['wholesale']);
         }
 
-        return $this->presentation($row['unit'], 1.0, $row['price'] > 0 ? $row['price'] : null, false, active: false);
+        return $this->presentation($row['unit'], 1.0, $row['price'] > 0 ? $row['price'] : null, false, active: false, wholesale: $row['wholesale']);
     }
 
     /**
@@ -453,7 +464,7 @@ class CatalogMapper
             }
         }
 
-        return $this->presentation($row['unit'], $row['factor'], $row['price'] > 0 ? $row['price'] : null, false, active: $active, cost: $row['cost']);
+        return $this->presentation($row['unit'], $row['factor'], $row['price'] > 0 ? $row['price'] : null, false, active: $active, cost: $row['cost'], wholesale: $row['wholesale']);
     }
 
     /**
@@ -508,6 +519,47 @@ class CatalogMapper
     }
 
     /**
+     * Un mayoreo más caro que el público o por debajo del costo se conserva,
+     * pero alguien debe confirmarlo antes de venderle a ese cliente.
+     *
+     * @param  array<string, mixed>  $product
+     * @param  list<array<string, mixed>>  $presentations
+     */
+    private function checkWholesale(array $product, array $presentations, ?float $baseUnitPrice): void
+    {
+        $above = $belowCost = [];
+
+        foreach ($presentations as $presentation) {
+            $price = $presentation['is_base'] ? $baseUnitPrice : $presentation['price'];
+            $cost = $presentation['source_cost'] ?? null;
+
+            foreach ($this->wholesaleTiers as $tier) {
+                $value = $presentation['wholesale'][$tier] ?? null;
+
+                if ($value === null || $value <= 0 || $price === null || $value === $price) {
+                    continue;
+                }
+
+                if ($value > $price) {
+                    $above[] = "{$tier} de {$presentation['name']}: {$value} sobre el público de {$price}";
+                }
+
+                if ($cost !== null && $cost > self::PLACEHOLDER_COST && $value < $cost) {
+                    $belowCost[] = "{$tier} de {$presentation['name']}: {$value} con costo de {$cost}";
+                }
+            }
+        }
+
+        if ($above !== []) {
+            $this->issue($product, 'mayoreo_mayor_precio', 'Mayoreo '.implode('; ', $above).'.');
+        }
+
+        if ($belowCost !== []) {
+            $this->issue($product, 'mayoreo_bajo_costo', 'Mayoreo '.implode('; ', $belowCost).'.');
+        }
+    }
+
+    /**
      * Evita «Ampolla x 5 ampollas» o «Caja x 4 cajas».
      *
      * @param  array<string, mixed>  $presentation
@@ -557,6 +609,7 @@ class CatalogMapper
     }
 
     /**
+     * @param  array<string, float>  $wholesale
      * @return array<string, mixed>
      */
     private function presentation(
@@ -568,6 +621,7 @@ class CatalogMapper
         bool $sellable = true,
         bool $purchasable = true,
         ?float $cost = null,
+        array $wholesale = [],
     ): array {
         $unitName = $this->units[$unit][1];
 
@@ -581,6 +635,8 @@ class CatalogMapper
             'is_purchasable' => $purchasable,
             'is_sellable' => $sellable,
             'is_active' => $active,
+            // Precios de mayoreo de esta misma presentación, tal como están en OnneB.
+            'wholesale' => $wholesale,
             'source_cost' => $cost,
         ];
     }

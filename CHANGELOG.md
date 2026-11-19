@@ -4,6 +4,11 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
+### Agregado
+
+- Cada presentación mapeada lleva sus precios de mayoreo de OnneB en `wholesale` (`A`, `B` y `C`), para armar listas de precios en el destino.
+- Incidencias `mayoreo_bajo_costo` y `mayoreo_mayor_precio`, solo para los mayoreos de `onneb.mapping.wholesale_tiers`.
+
 ## [1.1.0] - 2026-11-05
 
 ### Agregado

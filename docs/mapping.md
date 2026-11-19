@@ -28,6 +28,7 @@
             'is_purchasable' => true,
             'is_sellable' => true,
             'is_active' => true,
+            'wholesale' => ['A' => 1.8, 'B' => 1.7, 'C' => 1.6], // MAYOREOA, B y C de esta presentación.
         ],
     ],
 ]
@@ -53,7 +54,17 @@ Los servicios (`TIPOPROD = S`) no llevan presentaciones y conservan una sola tar
 - Un precio en 0 se convierte en `null` e incidencia `sin_precio`.
 - Un paquete que vale menos que la base queda inactivo: `precio_invertido`.
 - Un paquete 1.5 veces más caro por unidad que la base sigue activo: `precio_incoherente`.
-- Las columnas `MAYOREOA`, `MAYOREOB` y `MAYOREOC` no se mapean; aparecen en la hoja **Mayoreo**.
+- Cada presentación lleva en `wholesale` sus precios `MAYOREOA`, `MAYOREOB` y `MAYOREOC`, tal como están en OnneB, para que el importador arme listas de precios. Una presentación creada por la migración, como una Unidad implícita, lo trae vacío.
+- Un mayoreo más caro que el precio público genera `mayoreo_mayor_precio`, y uno por debajo del costo de esa presentación, `mayoreo_bajo_costo`. El valor se conserva igual; solo se reporta.
+- Solo se revisan los mayoreos que usa el destino:
+
+```php
+'mapping' => [
+    'wholesale_tiers' => ['A', 'B'], // o ONNEB_WHOLESALE_TIERS=A,B
+],
+```
+
+La hoja **Mayoreo** del Excel sigue listando cada fila de OnneB con mayoreo distinto del precio.
 
 ## Costos
 

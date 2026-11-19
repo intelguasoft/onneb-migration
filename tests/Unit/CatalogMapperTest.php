@@ -23,11 +23,17 @@ function onnebProduct(array $overrides = []): array
     ];
 }
 
-function onnebPrice(string $unit, float $factor, float $price, float $cost = 5.0, string $codprod = '100'): array
+/**
+ * @param  array{A?: float, B?: float, C?: float}  $wholesale  Mayoreos; por defecto, iguales al precio.
+ */
+function onnebPrice(string $unit, float $factor, float $price, float $cost = 5.0, string $codprod = '100', array $wholesale = []): array
 {
     static $id = 0;
 
-    return ['ID' => ++$id, 'CODPROD' => $codprod, 'CODMEDIDA' => $unit, 'EQUIVALE' => $factor, 'PRECIO' => $price, 'COSTO' => $cost];
+    return [
+        'ID' => ++$id, 'CODPROD' => $codprod, 'CODMEDIDA' => $unit, 'EQUIVALE' => $factor, 'PRECIO' => $price, 'COSTO' => $cost,
+        'MAYOREOA' => $wholesale['A'] ?? $price, 'MAYOREOB' => $wholesale['B'] ?? $price, 'MAYOREOC' => $wholesale['C'] ?? $price,
+    ];
 }
 
 function onnebCatalog(array $products, array $prices, array $brands = [1 => 'MK']): Catalog
@@ -239,6 +245,36 @@ it('no repite el empaque en el nombre de la presentación', function () {
     ]), [onnebPrice('AMPOLLA', 1, 90)]);
 
     expect(array_column($single['presentations'], 'name'))->toBe(['Ampolla x 5']);
+});
+
+it('lleva los mayoreos de OnneB en cada presentación', function () {
+    ['product' => $product, 'issues' => $issues] = mapOnnebProduct(onnebProduct(), [
+        onnebPrice('UNIDAD', 1, 2, 0.5, wholesale: ['A' => 1.8, 'B' => 1.7, 'C' => 1.6]),
+        onnebPrice('CAJA', 100, 180, 50, wholesale: ['A' => 170, 'B' => 165]),
+    ]);
+
+    expect(array_column($product['presentations'], 'wholesale'))->toBe([
+        ['A' => 1.8, 'B' => 1.7, 'C' => 1.6],
+        ['A' => 170.0, 'B' => 165.0, 'C' => 180.0],
+    ])->and($issues)->not->toContain('mayoreo_mayor_precio')->not->toContain('mayoreo_bajo_costo');
+});
+
+it('conserva los mayoreos raros y los reporta', function () {
+    ['product' => $product, 'issues' => $issues] = mapOnnebProduct(onnebProduct(), [
+        onnebPrice('UNIDAD', 1, 2, 1.5, wholesale: ['A' => 2.5, 'B' => 1.2]),
+    ]);
+
+    expect($product['presentations'][0]['wholesale'])->toBe(['A' => 2.5, 'B' => 1.2, 'C' => 2.0])
+        ->and($issues)->toContain('mayoreo_mayor_precio', 'mayoreo_bajo_costo');
+});
+
+it('solo revisa los mayoreos que usa el destino', function () {
+    $result = (new CatalogMapper(wholesaleTiers: ['A']))->map(onnebCatalog(
+        [onnebProduct()],
+        [onnebPrice('UNIDAD', 1, 2, 1.5, wholesale: ['B' => 1.2, 'C' => 9])],
+    ));
+
+    expect(array_column($result->issues, 'incidencia'))->not->toContain('mayoreo_mayor_precio')->not->toContain('mayoreo_bajo_costo');
 });
 
 it('no adivina el contenido de una unidad suelta', function () {

@@ -46,6 +46,10 @@ return [
         // («CAJA X 100 TABLETAS»), que pasa a la presentación. El nombre
         // original queda en la descripción.
         'clean_names' => env('ONNEB_CLEAN_NAMES', true),
+
+        // Mayoreos de OnneB (MAYOREOA, B y C) que el destino usa: solo esos
+        // se revisan contra el precio público y el costo.
+        'wholesale_tiers' => explode(',', (string) env('ONNEB_WHOLESALE_TIERS', 'A,B,C')),
     ],
 
     'review' => [
