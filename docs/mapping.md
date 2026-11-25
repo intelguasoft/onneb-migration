@@ -6,7 +6,8 @@
 
 ```php
 [
-    'sku' => '1005',
+    'sku' => '1005',             // SKU-01005 con 'sku_prefix' => 'SKU-' y 'sku_pad' => 5
+    'source_code' => '1005',     // CODPROD tal cual
     'barcode' => '7410001010800',
     'name' => 'AMOXICILINA',
     'description' => 'AMOXICILINA X 100 CAPSULAS (MK)',
@@ -76,11 +77,32 @@ Un costo de 0.10 o menos se considera relleno. El orden de búsqueda es:
 
 Los casos 2 y 3 generan `costo_derivado`. Sin ningún costo real queda en 0 con `sin_costo`.
 
+## SKU
+
+El SKU sale de `CODPROD`. Por defecto queda igual; el destino puede darle su propio formato:
+
+```php
+'mapping' => [
+    'sku_prefix' => 'SKU-', // o ONNEB_SKU_PREFIX=SKU-
+    'sku_pad' => 5,         // o ONNEB_SKU_PAD=5
+],
+```
+
+| CODPROD | SKU |
+|---|---|
+| `7` | `SKU-00007` |
+| `1005` | `SKU-01005` |
+| `12345` | `SKU-12345` |
+| `011418955059` | `SKU-011418955059` |
+| `AB12` | `SKU-AB12` |
+
+Solo se rellenan con ceros los códigos numéricos, y uno más largo se deja completo. Si dos códigos dan el mismo SKU, como `12` y `0012`, se conserva el primero y el otro queda con `sku_duplicado`. El `CODPROD` original viaja en `source_code`. Úselo para encontrar los productos de una carga anterior hecha con otro formato.
+
 ## Códigos de barras
 
-`CODPROD2` se usa como código de barras salvo que:
+`CODPROD2` va al código de barras, nunca al SKU, salvo que:
 
-- Sea igual al SKU o esté vacío.
+- Sea igual al `CODPROD` o esté vacío.
 - Otro producto declare el mismo código o lo use como SKU: `barcode_compartido`.
 
 Un código único que no es GTIN válido se conserva con `barcode_no_gtin`.

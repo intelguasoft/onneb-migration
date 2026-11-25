@@ -28,6 +28,8 @@ class OnneBServiceProvider extends ServiceProvider
                 fn (string $tier): string => mb_strtoupper(trim($tier)),
                 (array) $app['config']->get('onneb.mapping.wholesale_tiers', ['A', 'B', 'C']),
             ))),
+            (string) $app['config']->get('onneb.mapping.sku_prefix', ''),
+            max(0, (int) $app['config']->get('onneb.mapping.sku_pad', 0)),
         ));
 
         $this->app->bind(ReviewReport::class, fn (Application $app): ReviewReport => new ReviewReport(

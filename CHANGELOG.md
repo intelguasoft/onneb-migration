@@ -4,6 +4,15 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
+### Agregado
+
+- Formato del SKU con `onneb.mapping.sku_prefix` y `onneb.mapping.sku_pad`: con `SKU-` y 5, el `CODPROD` 123 queda `SKU-00123`. Sin configurar, el SKU sigue siendo el `CODPROD`.
+- Cada producto mapeado lleva su `CODPROD` original en `source_code`.
+
+### Cambiado
+
+- El Excel de revisión relaciona cada producto con OnneB por `source_code`, no por el SKU.
+
 ## [1.2.0] - 2026-11-18
 
 ### Agregado

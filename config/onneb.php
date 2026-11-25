@@ -50,6 +50,12 @@ return [
         // Mayoreos de OnneB (MAYOREOA, B y C) que el destino usa: solo esos
         // se revisan contra el precio público y el costo.
         'wholesale_tiers' => explode(',', (string) env('ONNEB_WHOLESALE_TIERS', 'A,B,C')),
+
+        // Formato del SKU a partir del CODPROD: con 'SKU-' y 5, el 123 queda
+        // SKU-00123. Solo se rellenan los códigos numéricos. El CODPROD
+        // original viaja en 'source_code'.
+        'sku_prefix' => env('ONNEB_SKU_PREFIX', ''),
+        'sku_pad' => (int) env('ONNEB_SKU_PAD', 0),
     ],
 
     'review' => [

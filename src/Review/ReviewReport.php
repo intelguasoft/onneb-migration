@@ -39,7 +39,7 @@ class ReviewReport
     {
         $path = $this->directory.'/revision-catalogo-'.now()->format('Ymd-His').($dryRun ? '-simulacion' : '').'.xlsx';
 
-        $products = collect($mapped->products)->keyBy(fn (array $product): string => $this->key($product['sku']));
+        $products = collect($mapped->products)->keyBy(fn (array $product): string => $this->key($product['source_code']));
         $prices = collect($catalog->prices)->groupBy(fn (array $row): string => $this->key($row['CODPROD']));
 
         Excel::store(

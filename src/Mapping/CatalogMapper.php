@@ -125,12 +125,16 @@ class CatalogMapper
      * @param  list<string>  $genericBrands  Marcas que no identifican a un fabricante.
      * @param  bool  $cleanNames  Quita del nombre el laboratorio y el contenido del empaque.
      * @param  list<string>  $wholesaleTiers  Mayoreos de OnneB (A, B, C) que se revisan contra precio y costo.
+     * @param  string  $skuPrefix  Texto antes del CODPROD en el SKU, como `SKU-`.
+     * @param  int  $skuPad  Largo mínimo de un CODPROD numérico, con ceros a la izquierda.
      */
     public function __construct(
         array $extraUnits = [],
         private readonly array $genericBrands = ['VARIOS'],
         private readonly bool $cleanNames = true,
         private readonly array $wholesaleTiers = ['A', 'B', 'C'],
+        private readonly string $skuPrefix = '',
+        private readonly int $skuPad = 0,
     ) {
         $this->units = $extraUnits + self::DEFAULT_UNITS;
         $this->names = new NameCleaner;
@@ -152,17 +156,18 @@ class CatalogMapper
         $seen = [];
 
         foreach ($products as $product) {
-            $sku = trim((string) $product['CODPROD']);
+            $code = trim((string) $product['CODPROD']);
+            $sku = $this->sku($code);
             $key = mb_strtoupper($sku);
 
             if (isset($seen[$key])) {
-                $this->issue($product, 'sku_duplicado', "El código {$sku} se repite tras normalizarlo; se conservó el primero.");
+                $this->issue($product, 'sku_duplicado', "El código {$code} da el SKU {$sku}, que ya tiene otro producto; se conservó el primero.");
 
                 continue;
             }
 
             $seen[$key] = true;
-            $rows = $pricesByProduct[$key] ?? [];
+            $rows = $pricesByProduct[mb_strtoupper($code)] ?? [];
 
             $mapped[] = $this->isService($product)
                 ? $this->mapService($product, $rows, $brands, $barcodeOwners, $skus)
@@ -657,7 +662,9 @@ class CatalogMapper
             ->first(fn (string $value): bool => $value !== '' && $value !== $rawName);
 
         return [
-            'sku' => trim((string) $product['CODPROD']),
+            'sku' => $this->sku(trim((string) $product['CODPROD'])),
+            // El CODPROD tal cual, para ubicar el producto en OnneB o en una carga anterior.
+            'source_code' => trim((string) $product['CODPROD']),
             'barcode' => $this->barcode($product, $barcodeOwners, $skus),
             'name' => $name,
             // Conserva el texto original cuando el nombre se limpió.
@@ -771,6 +778,19 @@ class CatalogMapper
     private function isService(array $product): bool
     {
         return mb_strtoupper(trim((string) $product['TIPOPROD'])) === 'S';
+    }
+
+    /**
+     * SKU del destino: `SKU-` + `123` con largo 5 da `SKU-00123`. Solo se
+     * rellenan los códigos numéricos; uno más largo se deja completo.
+     */
+    private function sku(string $code): string
+    {
+        if ($this->skuPad > 0 && ctype_digit($code)) {
+            $code = str_pad($code, $this->skuPad, '0', STR_PAD_LEFT);
+        }
+
+        return $this->skuPrefix.$code;
     }
 
     private function upperTrim(mixed $value): string

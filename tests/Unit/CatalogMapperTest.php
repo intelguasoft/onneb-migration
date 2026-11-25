@@ -360,3 +360,40 @@ it('valida el dígito verificador de un GTIN', function (string $code, bool $val
     ['019006500179', true],
     ['abc', false],
 ]);
+
+it('deja el CODPROD tal cual como SKU por defecto', function () {
+    ['product' => $product] = mapOnnebProduct(onnebProduct(['CODPROD' => '42', 'CODPROD2' => '7410001010800']), [onnebPrice('UNIDAD', 1, 2, codprod: '42')]);
+
+    expect($product['sku'])->toBe('42')
+        ->and($product['source_code'])->toBe('42')
+        ->and($product['barcode'])->toBe('7410001010800');
+});
+
+it('arma el SKU con prefijo y ceros a la izquierda', function (string $code, string $sku) {
+    $result = (new CatalogMapper(skuPrefix: 'SKU-', skuPad: 5))->map(onnebCatalog(
+        [onnebProduct(['CODPROD' => $code, 'CODPROD2' => '7410001010800'])],
+        [onnebPrice('UNIDAD', 1, 2, codprod: $code)],
+    ));
+
+    expect($result->products[0]['sku'])->toBe($sku)
+        ->and($result->products[0]['source_code'])->toBe($code)
+        ->and($result->products[0]['barcode'])->toBe('7410001010800')
+        ->and($result->products[0]['price'])->toBe(2.0);
+})->with([
+    'corto' => ['7', 'SKU-00007'],
+    'cuatro cifras' => ['1005', 'SKU-01005'],
+    'cinco cifras' => ['12345', 'SKU-12345'],
+    'más largo' => ['011418955059', 'SKU-011418955059'],
+    'no numérico' => ['AB12', 'SKU-AB12'],
+]);
+
+it('reporta dos códigos que dan el mismo SKU', function () {
+    $result = (new CatalogMapper(skuPrefix: 'SKU-', skuPad: 5))->map(onnebCatalog(
+        [onnebProduct(['CODPROD' => '12', 'CODPROD2' => '']), onnebProduct(['CODPROD' => '0012', 'CODPROD2' => ''])],
+        [onnebPrice('UNIDAD', 1, 2, codprod: '12'), onnebPrice('UNIDAD', 1, 3, codprod: '0012')],
+    ));
+
+    expect($result->products)->toHaveCount(1)
+        ->and($result->products[0]['source_code'])->toBe('12')
+        ->and(collect($result->issues)->where('incidencia', 'sku_duplicado')->pluck('codprod')->all())->toBe(['0012']);
+});
