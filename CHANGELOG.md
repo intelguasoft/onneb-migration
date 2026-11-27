@@ -4,6 +4,8 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
+## [1.4.0] - 2026-11-26
+
 ### Agregado
 
 - Proveedores: la extracción lleva `PROVEEDORES.json` y `COMPRAS.json`, un resumen de compras por producto y proveedor sin anuladas. `MappedCatalog::$suppliers` trae cada proveedor con NIT normalizado, teléfonos, días de crédito leídos del texto de OnneB, saldo y lo que hay que revisar.
@@ -65,7 +67,8 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 - Comandos `onneb:export`, `onneb:verify`, `onneb:review` y `onneb:migrate`.
 - Soporte para Laravel 12 y 13 con PHP 8.3 o superior.
 
-[Sin publicar]: https://github.com/intelguasoft/onneb-migration/compare/v1.3.0...HEAD
+[Sin publicar]: https://github.com/intelguasoft/onneb-migration/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/intelguasoft/onneb-migration/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/intelguasoft/onneb-migration/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/intelguasoft/onneb-migration/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/intelguasoft/onneb-migration/compare/v1.0.1...v1.1.0
