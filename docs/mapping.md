@@ -13,6 +13,10 @@
     'description' => 'AMOXICILINA X 100 CAPSULAS (MK)',
     'brand' => 'MK',
     'is_exempt' => false,
+    'suppliers' => [            // El principal primero; luego por compras.
+        ['code' => '6318', 'is_primary' => true, 'purchases' => 4, 'last_purchase' => '2026-11-12'],
+        ['code' => '1078', 'is_primary' => false, 'purchases' => 1, 'last_purchase' => '2025-03-02'],
+    ],
     'type' => 'good',            // good | service
     'base_unit' => 'UNIDAD',
     'standard_cost' => 0.5,
@@ -174,6 +178,29 @@ La hoja **Nombres** del Excel lista cada cambio. Para conservar los nombres de O
 
 Sin limpieza no se aplica la escritura uniforme: solo se quitan los espacios repetidos y la `x` tras el laboratorio. Las marcas de `onneb.mapping.generic_brands` no se asignan; por defecto, `VARIOS`.
 
+## Proveedores
+
+`MappedCatalog::$suppliers` trae cada fila de `PROVEEDORES`. OnneB usa varios campos a su manera, así que el mapeo los interpreta:
+
+| Campo | Desde OnneB |
+|---|---|
+| `code` | `CODPROV`, el vínculo para no duplicar en una recarga |
+| `legal_name` / `trade_name` | `RAZONSOCIAL` / `EMPRESA`; si falta uno, se usa el otro |
+| `tax_id` | `NIT` sin guiones, espacios ni puntos. `CF` si está vacío, es `CF` o es `SN`. `source_tax_id` guarda el original |
+| `phone` / `mobile` | `TELEMPRESA` / `TELCONTACTO`, solo si parecen teléfono: 8 dígitos o más y sin letras |
+| `contact` | `CONTACTO`, salvo `SN`, un teléfono o una condición de pago |
+| `credit_days` | El primero de `TELCONTACTO`, `CONTACTO` o `TELEMPRESA` que lo diga: «30 DIAS CREDITO» da 30 y «CONTADO», 0. `null` si ninguno lo dice |
+| `balance` | `SALDO` tal cual; negativo es lo que se le debe. No se migra como cuenta por pagar |
+| `notes` | Dirección y textos sin campo propio, como una condición que no es teléfono |
+| `primary_products` / `linked_products` | Productos donde es el principal / donde aparece |
+| `review` | Lo que hay que revisar: `nit_repetido`, `nit_invalido` (dígito verificador de Guatemala), `proveedor_sin_nit`, `proveedor_con_saldo` y `credito_por_confirmar` |
+
+Cada producto lleva en `suppliers` a sus proveedores:
+
+- **Principal:** OnneB no tiene un campo para él. Si `onneb.mapping.primary_supplier_column` nombra una columna de `PRODUCTOS`, su valor es el `CODPROV` del principal; en FARMARURAL es `CODCLADOS`. Si apunta a un proveedor que no existe, el producto queda sin principal con la incidencia informativa `proveedor_inexistente`.
+- **Alternos:** los proveedores a los que se les compró el producto, según el resumen `COMPRAS` de la extracción, de más a menos compras y, a igualdad, por la compra más reciente.
+
+El laboratorio sigue siendo la marca (`MARCAS`): OnneB no tiene una tabla de fabricantes.
 ## Medidas
 
 El paquete incluye 52 medidas en `CatalogMapper::DEFAULT_UNITS`. Una medida desconocida **detiene** la migración, para no inventar una unidad. Agréguela en la configuración:

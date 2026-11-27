@@ -2,6 +2,8 @@
 
 namespace RealsoftGt\OnneB\Data;
 
+use RealsoftGt\OnneB\Support\CatalogTables;
+
 /**
  * Catálogo de OnneB tal como viene del origen, con las columnas originales.
  */
@@ -14,6 +16,8 @@ final readonly class Catalog
      * @param  array<string, float>  $stock  Saldo por código normalizado.
      * @param  string  $origin  Nombre del origen: `database`, `snapshot` u otro.
      * @param  string  $extractedAt  Fecha ISO 8601 de los datos.
+     * @param  list<array<string, mixed>>  $suppliers  Filas de PROVEEDORES.
+     * @param  list<array{CODPROD: string, CODPROV: int, COMPRAS: int, ULTIMA_COMPRA: string}>  $purchases  Compras por producto y proveedor.
      */
     public function __construct(
         public array $products,
@@ -23,6 +27,8 @@ final readonly class Catalog
         public string $origin,
         public string $empnit,
         public string $extractedAt,
+        public array $suppliers = [],
+        public array $purchases = [],
     ) {}
 
     /**
@@ -51,6 +57,8 @@ final readonly class Catalog
             origin: $origin,
             empnit: $empnit,
             extractedAt: $extractedAt,
+            suppliers: $tables['PROVEEDORES'] ?? [],
+            purchases: $tables[CatalogTables::PURCHASES] ?? [],
         );
     }
 }

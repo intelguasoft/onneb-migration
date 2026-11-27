@@ -33,6 +33,47 @@ it('lee de SQL Server solo la empresa y sus productos habilitados', function () 
         ->and($catalog->stock)->toBe(['1005' => 42.0]);
 });
 
+it('lee los proveedores y resume las compras sin anuladas ni ventas', function () {
+    $catalog = app(SourceManager::class)->driver('database')->read();
+
+    expect(array_column($catalog->suppliers, 'CODPROV'))->toEqual([10, 20])
+        ->and($catalog->purchases)->toEqual([
+            ['CODPROD' => '1005', 'CODPROV' => 20, 'COMPRAS' => 2, 'ULTIMA_COMPRA' => '2026-11-05'],
+        ]);
+});
+
+it('liga cada producto con su proveedor principal y los demás a los que se le compró', function () {
+    config(['onneb.mapping.primary_supplier_column' => 'codclados']);
+
+    $mapped = app(CatalogMapper::class)->map(app(SourceManager::class)->driver('database')->read());
+    [$amoxicillin, $noPrice] = $mapped->products;
+
+    expect($amoxicillin['suppliers'])->toBe([
+        ['code' => '10', 'is_primary' => true, 'purchases' => 0, 'last_purchase' => null],
+        ['code' => '20', 'is_primary' => false, 'purchases' => 2, 'last_purchase' => '2026-11-05'],
+    ])
+        ->and($noPrice['suppliers'])->toBe([])
+        ->and(collect($mapped->issues)->where('codprod', '1006')->pluck('incidencia'))->toContain('proveedor_inexistente');
+});
+
+it('sin columna de proveedor principal solo liga a quienes se les compró', function () {
+    $mapped = app(CatalogMapper::class)->map(app(SourceManager::class)->driver('database')->read());
+
+    expect(array_column($mapped->products[0]['suppliers'], 'code'))->toBe(['20'])
+        ->and(collect($mapped->issues)->pluck('incidencia'))->not->toContain('proveedor_inexistente');
+});
+
+it('migra sin proveedores una base de OnneB que no tiene sus tablas', function () {
+    foreach (['PROVEEDORES', 'DOCUMENTOS'] as $table) {
+        Schema::connection('fixture')->drop($table);
+    }
+
+    $catalog = app(SourceManager::class)->driver('database')->read();
+
+    expect($catalog->suppliers)->toBe([])
+        ->and($catalog->purchases)->toBe([]);
+});
+
 it('entrega el mismo catálogo y mapeo desde archivos que desde SQL Server', function () {
     $manager = app(SourceManager::class);
 
@@ -46,6 +87,8 @@ it('entrega el mismo catálogo y mapeo desde archivos que desde SQL Server', fun
         ->and($snapshot->prices)->toBe($direct->prices)
         ->and($snapshot->brands)->toBe($direct->brands)
         ->and($snapshot->stock)->toBe($direct->stock)
+        ->and($snapshot->suppliers)->toEqual($direct->suppliers)
+        ->and($snapshot->purchases)->toEqual($direct->purchases)
         ->and(app(CatalogMapper::class)->map($snapshot))->toEqual(app(CatalogMapper::class)->map($direct));
 });
 

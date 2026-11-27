@@ -38,7 +38,13 @@ class TableReader
         $tables = [];
         $columns = [];
 
+        $schema = $connection->getSchemaBuilder();
+
         foreach (CatalogTables::ORDER as $table => $order) {
+            if (in_array($table, CatalogTables::OPTIONAL, true) && ! $schema->hasTable($table)) {
+                continue;
+            }
+
             $columns[$table] = $this->columns($connection, $table);
 
             $missing = array_diff(CatalogTables::REQUIRED_COLUMNS[$table], array_keys($columns[$table]));
@@ -59,7 +65,52 @@ class TableReader
             throw new OnneBException("OnneB no devolvió productos para {$empnit}.");
         }
 
+        if ($schema->hasTable('DOCUMENTOS') && $schema->hasTable('DOCPRODUCTOS') && $schema->hasTable('TIPODOCUMENTOS')) {
+            $tables[CatalogTables::PURCHASES] = $this->purchases($connection, $empnit);
+            $columns[CatalogTables::PURCHASES] = CatalogTables::PURCHASE_COLUMNS;
+        }
+
         return ['empnit' => $empnit, 'tables' => $tables, 'columns' => $columns];
+    }
+
+    /**
+     * Cuántas compras de cada producto se hicieron a cada proveedor y cuándo
+     * fue la última. Son compras los documentos de tipo COM; los anulados
+     * (STATUS = A) no cuentan. El proveedor está en DOCUMENTOS.CODCLIENTE.
+     *
+     * @return list<array{CODPROD: string, CODPROV: int, COMPRAS: int, ULTIMA_COMPRA: string}>
+     */
+    private function purchases(Connection $connection, string $empnit): array
+    {
+        $documents = $connection->table('DOCUMENTOS as d')
+            ->join('DOCPRODUCTOS as p', function ($join): void {
+                $join->on('p.EMPNIT', '=', 'd.EMPNIT')
+                    ->on('p.CODDOC', '=', 'd.CODDOC')
+                    ->on('p.CORRELATIVO', '=', 'd.CORRELATIVO');
+            })
+            ->where('d.EMPNIT', $empnit)
+            ->whereIn('d.CODDOC', fn ($query) => $query->select('CODDOC')->from('TIPODOCUMENTOS')->where('EMPNIT', $empnit)->where('TIPODOC', 'COM'))
+            ->where(fn ($query) => $query->whereNull('d.STATUS')->orWhere('d.STATUS', '<>', 'A'))
+            ->whereNotNull('d.CODCLIENTE')
+            ->distinct()
+            ->get(['p.CODPROD', 'd.CODCLIENTE', 'd.CODDOC', 'd.CORRELATIVO', 'd.FECHA']);
+
+        $summary = [];
+
+        foreach ($documents as $document) {
+            $product = trim((string) $document->CODPROD);
+            $supplier = (int) $document->CODCLIENTE;
+            $date = substr((string) $document->FECHA, 0, 10);
+            $key = mb_strtoupper($product)."\0{$supplier}";
+
+            $summary[$key] ??= ['CODPROD' => $product, 'CODPROV' => $supplier, 'COMPRAS' => 0, 'ULTIMA_COMPRA' => $date];
+            $summary[$key]['COMPRAS']++;
+            $summary[$key]['ULTIMA_COMPRA'] = max($summary[$key]['ULTIMA_COMPRA'], $date);
+        }
+
+        ksort($summary, SORT_STRING);
+
+        return array_values($summary);
     }
 
     private function connection(): Connection

@@ -4,6 +4,16 @@ Todos los cambios relevantes se documentan aquí, con el formato de [Keep a Chan
 
 ## [Sin publicar]
 
+### Agregado
+
+- Proveedores: la extracción lleva `PROVEEDORES.json` y `COMPRAS.json`, un resumen de compras por producto y proveedor sin anuladas. `MappedCatalog::$suppliers` trae cada proveedor con NIT normalizado, teléfonos, días de crédito leídos del texto de OnneB, saldo y lo que hay que revisar.
+- Cada producto mapeado lleva `suppliers`: el principal, desde la columna de `onneb.mapping.primary_supplier_column` (en FARMARURAL, `CODCLADOS`), y los alternos según sus compras.
+- Hoja **Proveedores** en el Excel de revisión y en el de atención. Revisiones de NIT repetido, NIT inválido, sin NIT, saldo en OnneB y crédito por confirmar. Incidencia `proveedor_inexistente`.
+
+### Cambiado
+
+- Las extracciones anteriores, sin proveedores, siguen siendo válidas: se migran sin ellos.
+
 ## [1.3.0] - 2026-11-25
 
 ### Agregado

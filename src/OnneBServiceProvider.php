@@ -30,6 +30,7 @@ class OnneBServiceProvider extends ServiceProvider
             ))),
             (string) $app['config']->get('onneb.mapping.sku_prefix', ''),
             max(0, (int) $app['config']->get('onneb.mapping.sku_pad', 0)),
+            filled($column = $app['config']->get('onneb.mapping.primary_supplier_column')) ? mb_strtoupper(trim((string) $column)) : null,
         ));
 
         $this->app->bind(ReviewReport::class, fn (Application $app): ReviewReport => new ReviewReport(

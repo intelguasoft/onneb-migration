@@ -9,12 +9,14 @@ revision-catalogo-20260115-080000-simulacion.xlsx
 
 ## Libro de atención
 
-Es por donde empieza el equipo. Trae una sola hoja, **Atención**, con lo que requiere a una persona:
+Es por donde empieza el equipo. La hoja **Atención** trae lo que requiere a una persona:
 
 - Una fila por producto, aunque tenga varias incidencias, con todas juntas.
 - Solo incidencias de revisión; las informativas, como un costo derivado, quedan en el libro completo.
 - Ordenado por prioridad y, dentro de cada prioridad, por existencia en OnneB: primero lo que más se vende y está en bodega.
 - Columnas **Qué revisar**, **Detalle** y **Qué hacer**, y tres libres para el equipo: **Corregido**, **Responsable** y **Notas**.
+
+Si algún proveedor requiere revisión, la hoja **Proveedores** lo lista por prioridad y saldo, con las mismas columnas libres.
 
 `MigrationResult::$attentionPath` devuelve su ruta.
 
@@ -27,6 +29,7 @@ Es por donde empieza el equipo. Trae una sola hoja, **Atención**, con lo que re
 | **Presentaciones** | OnneB y destino lado a lado en los productos con dudas de factor o precio |
 | **Nombres** | Cada nombre que cambió: el de OnneB, el limpio, la marca y las presentaciones |
 | **Mayoreo** | Precios A, B y C que no se migran |
+| **Proveedores** | Cada proveedor con el NIT de OnneB y el del destino, crédito, saldo, productos y qué revisar, si la extracción los trae |
 | **Pendientes** | Tareas que reporta el importador, si existen |
 
 La columna **Corregido** de **Por corregir** queda libre para control del equipo; el paquete no la lee.
@@ -37,7 +40,15 @@ La columna **Corregido** de **Por corregir** queda libre para control del equipo
 |---|---|
 | Alta | Sin precio, Sin presentaciones, Sin costo, Costo mayor que el precio, Mayoreo bajo el costo, Base ambigua, Factor no confiable, Precio invertido |
 | Media | Base implícita, Factor tomado de UXC, Precio incoherente, Mayoreo más caro que el público, Código de barras compartido, Código de barras en uso, Servicio con varias tarifas, Código duplicado, Contenido por confirmar, Laboratorio distinto de la marca |
-| Baja | Costo derivado, Código de barras interno, Stock máximo inválido |
+| Baja | Costo derivado, Código de barras interno, Stock máximo inválido, Proveedor principal inexistente |
+
+De los proveedores (`IssueCatalog::SUPPLIER_ISSUES`):
+
+| Prioridad | Revisión |
+|---|---|
+| Alta | NIT repetido, NIT inválido |
+| Media | Sin NIT, Con saldo en OnneB |
+| Baja | Crédito por confirmar |
 
 ## Configuración
 

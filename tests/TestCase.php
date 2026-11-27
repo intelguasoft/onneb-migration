@@ -51,6 +51,7 @@ abstract class TestCase extends Orchestra
             $table->integer('EXENTO');
             $table->string('TIPOPROD');
             $table->string('HABILITADO');
+            $table->integer('CODCLADOS')->nullable();
             $table->binary('FOTO')->nullable();
         });
 
@@ -79,10 +80,45 @@ abstract class TestCase extends Orchestra
             $table->integer('SALDO');
         });
 
-        $product = fn (string $code, string $name, string $enabled, string $empnit = 'EMPRESA', ?string $photo = null): array => [
+        $schema->create('PROVEEDORES', function (Blueprint $table) {
+            $table->string('EMPNIT');
+            $table->integer('CODPROV');
+            $table->string('EMPRESA');
+            $table->string('RAZONSOCIAL');
+            $table->string('DIRECCION');
+            $table->string('TELEMPRESA');
+            $table->string('CONTACTO');
+            $table->string('TELCONTACTO');
+            $table->string('NIT');
+            $table->float('SALDO')->nullable();
+        });
+
+        $schema->create('TIPODOCUMENTOS', function (Blueprint $table) {
+            $table->string('EMPNIT');
+            $table->string('CODDOC');
+            $table->string('TIPODOC');
+        });
+
+        $schema->create('DOCUMENTOS', function (Blueprint $table) {
+            $table->string('EMPNIT');
+            $table->string('CODDOC');
+            $table->integer('CORRELATIVO');
+            $table->integer('CODCLIENTE')->nullable();
+            $table->date('FECHA');
+            $table->string('STATUS')->nullable();
+        });
+
+        $schema->create('DOCPRODUCTOS', function (Blueprint $table) {
+            $table->string('EMPNIT');
+            $table->string('CODDOC');
+            $table->integer('CORRELATIVO');
+            $table->string('CODPROD');
+        });
+
+        $product = fn (string $code, string $name, string $enabled, string $empnit = 'EMPRESA', ?string $photo = null, ?int $supplier = null): array => [
             'EMPNIT' => $empnit, 'CODPROD' => $code, 'CODPROD2' => $code, 'DESPROD' => $name, 'DESPROD2' => $name, 'DESPROD3' => $name,
             'UXC' => 1, 'COSTO' => '1.0000', 'CODMARCA' => 1, 'INVMINIMO' => 0, 'INVMAXIMO' => 0, 'EXENTO' => 0,
-            'TIPOPROD' => 'P', 'HABILITADO' => $enabled, 'FOTO' => $photo,
+            'TIPOPROD' => 'P', 'HABILITADO' => $enabled, 'CODCLADOS' => $supplier, 'FOTO' => $photo,
         ];
 
         $price = fn (int $id, string $code, string $unit, int $factor, string $amount, string $wholesale, string $empnit = 'EMPRESA'): array => [
@@ -94,8 +130,8 @@ abstract class TestCase extends Orchestra
 
         $onneb->table('PRODUCTOS')->insert([
             $product('2000', 'AÑIL "AZUL" (MK)', 'NO', photo: "\xFF\xD8"),
-            $product('1005', 'AMOXICILINA X 100 (MK)x', 'SI'),
-            $product('1006', 'SIN PRECIO (MK)', ' si '),
+            $product('1005', 'AMOXICILINA X 100 (MK)x', 'SI', supplier: 10),
+            $product('1006', 'SIN PRECIO (MK)', ' si ', supplier: 99),
             $product('9999', 'AJENO', 'SI', 'OTRA'),
         ]);
 
@@ -111,6 +147,43 @@ abstract class TestCase extends Orchestra
         $onneb->table('INVSALDO')->insert([
             ['EMPNIT' => 'EMPRESA', 'CODPROD' => '1005', 'SALDO' => 40],
             ['EMPNIT' => 'EMPRESA', 'CODPROD' => '1005 ', 'SALDO' => 2],
+        ]);
+
+        $supplier = fn (int $code, string $name, string $legalName, string $phone, string $terms, string $taxId, float $balance, string $empnit = 'EMPRESA'): array => [
+            'EMPNIT' => $empnit, 'CODPROV' => $code, 'EMPRESA' => $name, 'RAZONSOCIAL' => $legalName, 'DIRECCION' => 'ZONA 1',
+            'TELEMPRESA' => $phone, 'CONTACTO' => 'SN', 'TELCONTACTO' => $terms, 'NIT' => $taxId, 'SALDO' => $balance,
+        ];
+
+        $onneb->table('PROVEEDORES')->insert([
+            $supplier(10, 'DROGUERIA UNO', 'DROGUERIA UNO, S.A.', '2222-3333', '30 DIAS CREDITO', '576937-K', 0),
+            $supplier(20, 'DISTRIBUIDORA DOS', 'DISTRIBUIDORA DOS', 'SN', 'SN', 'CF', -150.5),
+            $supplier(30, 'AJENO', 'AJENO', 'SN', 'CONTADO', 'CF', 0, 'OTRA'),
+        ]);
+
+        $onneb->table('TIPODOCUMENTOS')->insert([
+            ['EMPNIT' => 'EMPRESA', 'CODDOC' => 'COMP', 'TIPODOC' => 'COM'],
+            ['EMPNIT' => 'EMPRESA', 'CODDOC' => 'FAC', 'TIPODOC' => 'FAC'],
+        ]);
+
+        $document = fn (string $type, int $number, int $supplier, string $date, string $status = 'O'): array => [
+            'EMPNIT' => 'EMPRESA', 'CODDOC' => $type, 'CORRELATIVO' => $number, 'CODCLIENTE' => $supplier, 'FECHA' => $date, 'STATUS' => $status,
+        ];
+
+        $onneb->table('DOCUMENTOS')->insert([
+            $document('COMP', 1, 20, '2026-10-01'),
+            $document('COMP', 2, 20, '2026-11-05'),
+            $document('COMP', 3, 10, '2026-09-01', 'A'),
+            $document('FAC', 1, 20, '2026-11-06'),
+        ]);
+
+        $line = fn (string $type, int $number, string $code): array => ['EMPNIT' => 'EMPRESA', 'CODDOC' => $type, 'CORRELATIVO' => $number, 'CODPROD' => $code];
+
+        $onneb->table('DOCPRODUCTOS')->insert([
+            $line('COMP', 1, '1005'),
+            $line('COMP', 2, '1005'),
+            $line('COMP', 2, '1005'),
+            $line('COMP', 3, '1006'),
+            $line('FAC', 1, '1005'),
         ]);
     }
 }

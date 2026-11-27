@@ -165,5 +165,51 @@ class IssueCatalog
             'done' => 'Se conservó el mínimo y se omitió el máximo.',
             'action' => 'Definir el máximo al ajustar los puntos de reorden.',
         ],
+        'proveedor_inexistente' => [
+            'label' => 'Proveedor principal inexistente',
+            'priority' => self::LOW,
+            'meaning' => 'El producto apunta a un código que no está en PROVEEDORES.',
+            'done' => 'Quedó sin proveedor principal; conserva los proveedores de sus compras.',
+            'action' => 'Asignar el proveedor principal en el producto.',
+        ],
+    ];
+
+    /** @var array<string, array{label: string, priority: string, meaning: string, done: string, action: string}> */
+    public const SUPPLIER_ISSUES = [
+        'nit_repetido' => [
+            'label' => 'NIT repetido',
+            'priority' => self::HIGH,
+            'meaning' => 'Varios proveedores de OnneB tienen el mismo NIT: puede ser el mismo tercero dado de alta dos veces.',
+            'done' => 'Se creó cada uno por separado, con su código de OnneB.',
+            'action' => 'Confirmar si es el mismo proveedor; si lo es, pasar sus productos a uno y desactivar el otro.',
+        ],
+        'nit_invalido' => [
+            'label' => 'NIT inválido',
+            'priority' => self::HIGH,
+            'meaning' => 'El NIT no cumple el dígito verificador de Guatemala: está mal escrito o es de otro país.',
+            'done' => 'Se cargó tal cual.',
+            'action' => 'Corregirlo con la última factura del proveedor antes de registrar compras.',
+        ],
+        'proveedor_sin_nit' => [
+            'label' => 'Sin NIT',
+            'priority' => self::MEDIUM,
+            'meaning' => 'OnneB no tiene el NIT del proveedor.',
+            'done' => 'Quedó con NIT CF.',
+            'action' => 'Registrar el NIT con la última factura: sin él, la compra no da crédito fiscal.',
+        ],
+        'proveedor_con_saldo' => [
+            'label' => 'Con saldo en OnneB',
+            'priority' => self::MEDIUM,
+            'meaning' => 'OnneB registra un saldo con el proveedor; negativo es lo que se le debe.',
+            'done' => 'No se cargó como cuenta por pagar.',
+            'action' => 'Cuadrar el saldo con contabilidad y registrarlo en la apertura de cuentas por pagar.',
+        ],
+        'credito_por_confirmar' => [
+            'label' => 'Crédito por confirmar',
+            'priority' => self::LOW,
+            'meaning' => 'OnneB no dice los días de crédito ni si es de contado.',
+            'done' => 'Quedó con 0 días de crédito.',
+            'action' => 'Confirmar la condición de pago con el proveedor.',
+        ],
     ];
 }

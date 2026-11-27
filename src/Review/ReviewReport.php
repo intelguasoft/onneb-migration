@@ -11,10 +11,13 @@ use RealsoftGt\OnneB\Data\Catalog;
 use RealsoftGt\OnneB\Data\ImportResult;
 use RealsoftGt\OnneB\Data\MappedCatalog;
 use RealsoftGt\OnneB\Mapping\CatalogMapper;
+use RealsoftGt\OnneB\Mapping\SupplierMapper;
 
 /**
  * Arma el Excel con lo que una persona debe revisar tras cada corrida, con el
  * dato de OnneB al lado del resultado para corregir sin volver a consultarlo.
+ *
+ * @phpstan-import-type MappedSupplier from SupplierMapper
  */
 class ReviewReport
 {
@@ -42,12 +45,14 @@ class ReviewReport
         $products = collect($mapped->products)->keyBy(fn (array $product): string => $this->key($product['source_code']));
         $prices = collect($catalog->prices)->groupBy(fn (array $row): string => $this->key($row['CODPROD']));
 
-        Excel::store(
-            new ReviewExport([$this->attentionSheet($import->issues, $products, $catalog->stock)]),
-            $this->attentionFile($path),
-            $this->disk,
-            ExcelFormat::XLSX,
-        );
+        $attention = [$this->attentionSheet($import->issues, $products, $catalog->stock)];
+        $flagged = array_values(array_filter($mapped->suppliers, fn (array $supplier): bool => $supplier['review'] !== []));
+
+        if ($flagged !== []) {
+            $attention[] = $this->supplierAttentionSheet($flagged);
+        }
+
+        Excel::store(new ReviewExport($attention), $this->attentionFile($path), $this->disk, ExcelFormat::XLSX);
 
         $sheets = [
             $this->summarySheet($catalog, $import, $dryRun),
@@ -56,6 +61,10 @@ class ReviewReport
             $this->namesSheet($catalog->products, $products),
             $this->wholesaleSheet($catalog->prices, $products),
         ];
+
+        if ($mapped->suppliers !== []) {
+            $sheets[] = $this->suppliersSheet($mapped->suppliers);
+        }
 
         if ($import->pending !== []) {
             $sheets[] = $this->pendingSheet($import->pending);
@@ -126,6 +135,76 @@ class ReviewReport
             ['Prioridad', 'Código', 'Producto', 'Marca', 'Existencia OnneB', 'Qué revisar', 'Detalle', 'Qué hacer', "Presentaciones en {$this->targetName}", 'Nombre en OnneB', 'Corregido', 'Responsable', 'Notas'],
             ...$rows,
         ], wrapFrom: 6);
+    }
+
+    /**
+     * Proveedores que requieren a una persona, por prioridad y luego por saldo.
+     *
+     * @param  list<MappedSupplier>  $suppliers
+     */
+    private function supplierAttentionSheet(array $suppliers): ReviewSheet
+    {
+        $rows = collect($suppliers)
+            ->map(function (array $supplier): array {
+                $issues = collect($supplier['review'])->map(fn (string $code): array => IssueCatalog::SUPPLIER_ISSUES[$code]);
+                $priority = $issues->sortBy(fn (array $issue): int => IssueCatalog::PRIORITIES[$issue['priority']])->first()['priority'];
+
+                return [
+                    'order' => [IssueCatalog::PRIORITIES[$priority], -abs($supplier['balance']), -$supplier['linked_products'], $supplier['code']],
+                    'row' => [
+                        $priority,
+                        $supplier['code'],
+                        $supplier['trade_name'],
+                        $supplier['legal_name'],
+                        $supplier['source_tax_id'] ?? '',
+                        $supplier['balance'],
+                        $supplier['linked_products'],
+                        $issues->pluck('label')->join(', '),
+                        $issues->pluck('action')->map(fn (string $action): string => "• {$action}")->join("\n"),
+                        '',
+                        '',
+                        '',
+                    ],
+                ];
+            })
+            ->sortBy('order')
+            ->pluck('row')
+            ->values()
+            ->all();
+
+        return new ReviewSheet('Proveedores', [
+            ['Prioridad', 'Código', 'Proveedor', 'Razón social', 'NIT en OnneB', 'Saldo OnneB', 'Productos', 'Qué revisar', 'Qué hacer', 'Corregido', 'Responsable', 'Notas'],
+            ...$rows,
+        ], wrapFrom: 8);
+    }
+
+    /**
+     * Cada proveedor con lo que trae OnneB y cómo queda en el destino.
+     *
+     * @param  list<MappedSupplier>  $suppliers
+     */
+    private function suppliersSheet(array $suppliers): ReviewSheet
+    {
+        $rows = array_map(fn (array $supplier): array => [
+            $supplier['code'],
+            $supplier['trade_name'],
+            $supplier['legal_name'],
+            $supplier['source_tax_id'] ?? '',
+            $supplier['tax_id'],
+            $supplier['phone'] ?? '',
+            $supplier['mobile'] ?? '',
+            $supplier['credit_days'],
+            $supplier['balance'],
+            $supplier['primary_products'],
+            $supplier['linked_products'],
+            collect($supplier['review'])->map(fn (string $code): string => IssueCatalog::SUPPLIER_ISSUES[$code]['label'])->join(', '),
+            $supplier['notes'] ?? '',
+        ], $suppliers);
+
+        return new ReviewSheet('Proveedores', [
+            ['Código', 'Proveedor', 'Razón social', 'NIT en OnneB', "NIT en {$this->targetName}", 'Teléfono', 'Celular', 'Días de crédito', 'Saldo OnneB', 'Productos como principal', 'Productos ligados', 'Revisar', 'Notas'],
+            ...$rows,
+        ], wrapFrom: 12);
     }
 
     private function summarySheet(Catalog $catalog, ImportResult $import, bool $dryRun): ReviewSheet

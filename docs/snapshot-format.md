@@ -8,7 +8,9 @@ database/data/onneb/
 ├── PRODUCTOS.json
 ├── PRECIOS.json
 ├── MARCAS.json
-└── INVSALDO.json
+├── INVSALDO.json
+├── PROVEEDORES.json
+└── COMPRAS.json
 ```
 
 ## Tablas
@@ -26,6 +28,10 @@ Cada archivo es un arreglo JSON con una fila por línea, lo que permite comparar
 - Incluye todas las columnas excepto las binarias, como `PRODUCTOS.FOTO`.
 - Incluye solo la empresa indicada, también los productos deshabilitados. El filtro `HABILITADO` se aplica al leer.
 - Los decimales se guardan como texto cuando el controlador los entrega así, para no perder precisión.
+
+`COMPRAS` no es una tabla de OnneB. Resume las compras por producto y proveedor con `CODPROD`, `CODPROV`, `COMPRAS` (documentos) y `ULTIMA_COMPRA`. Se arma con `DOCUMENTOS`, `DOCPRODUCTOS` y `TIPODOCUMENTOS`: son compras los documentos de tipo `COM`, los anulados (`STATUS = A`) no cuentan y el proveedor es `DOCUMENTOS.CODCLIENTE`.
+
+`PROVEEDORES` y `COMPRAS` son opcionales. Una extracción anterior que no los trae sigue siendo válida y se migra sin proveedores.
 
 ## Manifiesto
 

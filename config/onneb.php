@@ -56,6 +56,11 @@ return [
         // original viaja en 'source_code'.
         'sku_prefix' => env('ONNEB_SKU_PREFIX', ''),
         'sku_pad' => (int) env('ONNEB_SKU_PAD', 0),
+
+        // Columna de PRODUCTOS con el CODPROV del proveedor principal. OnneB
+        // no tiene un campo propio; en FARMARURAL se usa CODCLADOS. Vacío, el
+        // producto solo se liga a los proveedores a los que se le compró.
+        'primary_supplier_column' => env('ONNEB_PRIMARY_SUPPLIER_COLUMN'),
     ],
 
     'review' => [

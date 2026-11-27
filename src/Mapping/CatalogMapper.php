@@ -54,6 +54,7 @@ class CatalogMapper
         'costo_derivado' => 'informativo',
         'barcode_no_gtin' => 'informativo',
         'stock_maximo_invalido' => 'informativo',
+        'proveedor_inexistente' => 'informativo',
     ];
 
     /** CODMEDIDA de OnneB => [código, nombre] de la unidad en el destino. */
@@ -117,8 +118,13 @@ class CatalogMapper
 
     private readonly NameCleaner $names;
 
+    private readonly SupplierMapper $suppliers;
+
     /** @var list<array{codprod: string, descripcion: string, incidencia: string, severidad: string, detalle: string}> */
     private array $issues = [];
+
+    /** @var array<string, list<array{code: string, is_primary: bool, purchases: int, last_purchase: ?string}>> */
+    private array $supplierLinks = [];
 
     /**
      * @param  array<string, array{0: string, 1: string}>  $extraUnits  Medidas propias de la instalación.
@@ -127,6 +133,7 @@ class CatalogMapper
      * @param  list<string>  $wholesaleTiers  Mayoreos de OnneB (A, B, C) que se revisan contra precio y costo.
      * @param  string  $skuPrefix  Texto antes del CODPROD en el SKU, como `SKU-`.
      * @param  int  $skuPad  Largo mínimo de un CODPROD numérico, con ceros a la izquierda.
+     * @param  ?string  $primarySupplierColumn  Columna de PRODUCTOS con el CODPROV del proveedor principal.
      */
     public function __construct(
         array $extraUnits = [],
@@ -135,14 +142,18 @@ class CatalogMapper
         private readonly array $wholesaleTiers = ['A', 'B', 'C'],
         private readonly string $skuPrefix = '',
         private readonly int $skuPad = 0,
+        ?string $primarySupplierColumn = null,
     ) {
         $this->units = $extraUnits + self::DEFAULT_UNITS;
         $this->names = new NameCleaner;
+        $this->suppliers = new SupplierMapper($primarySupplierColumn);
     }
 
     public function map(Catalog $catalog): MappedCatalog
     {
         $this->issues = [];
+        $suppliers = $this->suppliers->map($catalog);
+        $this->supplierLinks = $suppliers['links'];
 
         $products = $catalog->products;
         $prices = $catalog->prices;
@@ -169,12 +180,16 @@ class CatalogMapper
             $seen[$key] = true;
             $rows = $pricesByProduct[mb_strtoupper($code)] ?? [];
 
+            if (isset($suppliers['missing'][mb_strtoupper($code)])) {
+                $this->issue($product, 'proveedor_inexistente', "El proveedor principal {$suppliers['missing'][mb_strtoupper($code)]} no está en PROVEEDORES: el producto quedó sin proveedor principal.");
+            }
+
             $mapped[] = $this->isService($product)
                 ? $this->mapService($product, $rows, $brands, $barcodeOwners, $skus)
                 : $this->mapGood($product, $rows, $brands, $barcodeOwners, $skus);
         }
 
-        return new MappedCatalog($mapped, $this->issues);
+        return new MappedCatalog($mapped, $this->issues, $suppliers['suppliers']);
     }
 
     /**
@@ -671,6 +686,8 @@ class CatalogMapper
             'description' => $alternative ?? ($name !== $rawName ? $rawName : null),
             'brand' => $this->brand($product, $brands, $cleaned->label),
             'is_exempt' => (int) $product['EXENTO'] === 1,
+            // El principal primero; luego los demás a los que se les compró.
+            'suppliers' => $this->supplierLinks[$this->upperTrim($product['CODPROD'])] ?? [],
         ];
     }
 

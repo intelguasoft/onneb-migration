@@ -35,6 +35,11 @@ class SnapshotSource implements CatalogSource
         $tables = [];
 
         foreach (CatalogTables::REQUIRED_COLUMNS as $table => $columns) {
+            // Una extracción anterior a los proveedores sigue siendo válida.
+            if (in_array($table, CatalogTables::OPTIONAL, true) && ! isset($manifest['tablas'][$table])) {
+                continue;
+            }
+
             $tables[$table] = $this->table($table, $columns, $manifest['tablas'][$table] ?? null);
         }
 

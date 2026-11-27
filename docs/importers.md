@@ -62,6 +62,7 @@ class ProductImporter implements CatalogImporter
 - **Haga la corrida repetible:** no pise lo corregido a mano; omita lo que ya exista.
 - **Devuelva `$catalog->issues`:** puede agregar incidencias propias, como `barcode_en_uso`.
 - **No migre existencias como dato definitivo:** los saldos de `INVSALDO` solo orientan la revisión.
+- **Cree los proveedores antes que los productos:** cada producto trae en `suppliers` los `code` de `MappedCatalog::$suppliers`. Ubíquelos por ese código para que una recarga no los duplique, y no migre `balance` como cuenta por pagar.
 
 ## `ImportResult`
 

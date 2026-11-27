@@ -9,6 +9,7 @@ use RealsoftGt\OnneB\Data\ImportResult;
 use RealsoftGt\OnneB\Data\MappedCatalog;
 use RealsoftGt\OnneB\Exceptions\OnneBException;
 use RealsoftGt\OnneB\Mapping\CatalogMapper;
+use RealsoftGt\OnneB\Mapping\SupplierMapper;
 use RealsoftGt\OnneB\OnneBMigrator;
 use RealsoftGt\OnneB\Review\IssueCatalog;
 use RealsoftGt\OnneB\Snapshot\SnapshotWriter;
@@ -73,7 +74,7 @@ it('genera el Excel con el contexto para corregir', function (string $source) {
     $book = workbook($result->reportPath);
     $noPrice = collect($book['Por corregir'])->firstWhere(1, '1006');
 
-    expect(array_keys($book))->toBe(['Resumen', 'Por corregir', 'Presentaciones', 'Nombres', 'Mayoreo', 'Pendientes'])
+    expect(array_keys($book))->toBe(['Resumen', 'Por corregir', 'Presentaciones', 'Nombres', 'Mayoreo', 'Proveedores', 'Pendientes'])
         ->and($book['Nombres'][0])->toContain('Nombre en Mi ERP')
         ->and(collect($book['Nombres'])->firstWhere(0, '1005'))->toBe(['1005', 'AMOXICILINA X 100 (MK)x', 'AMOXICILINA', 'MK', 'Unidad, Caja x 100'])
         ->and($book['Resumen'][1][0])->toContain('Catálogo cargado')
@@ -100,6 +101,41 @@ it('separa en otro libro solo lo que requiere a una persona', function () {
         ->and($codes)->toBe(array_values(array_unique($codes)))
         ->and(collect($rows)->firstWhere(1, '1006')[5])->toBe('Sin precio')
         ->and(collect($rows)->pluck(5)->implode(' '))->not->toContain('Costo derivado');
+});
+
+it('lleva los proveedores al Excel y los que requieren a una persona al de atención', function () {
+    config(['onneb.mapping.primary_supplier_column' => 'CODCLADOS']);
+
+    $result = app(OnneBMigrator::class)->run(new RecordingImporter);
+    $suppliers = workbook($result->reportPath)['Proveedores'];
+    $attention = workbook($result->attentionPath)['Proveedores'];
+
+    expect(array_column(array_slice($suppliers, 1), 0))->toBe(['10', '20'])
+        ->and($suppliers[1][4])->toBe('576937K')
+        ->and($suppliers[1][7])->toEqual(30)
+        ->and($suppliers[1][9])->toEqual(1)
+        ->and(array_column(array_slice($attention, 1), 1))->toBe(['20'])
+        ->and($attention[1][0])->toBe('Media')
+        ->and($attention[1][5])->toEqual(-150.5)
+        ->and($attention[1][7])->toBe('Sin NIT, Con saldo en OnneB, Crédito por confirmar');
+});
+
+it('migra sin proveedores una extracción anterior a ellos', function () {
+    $path = $this->snapshotPath();
+    $manifest = json_decode(File::get("{$path}/manifest.json"), true);
+    unset($manifest['tablas']['PROVEEDORES'], $manifest['tablas']['COMPRAS']);
+    File::put("{$path}/manifest.json", json_encode($manifest));
+
+    $result = app(OnneBMigrator::class)->run(new NullImporter);
+
+    expect($result->mapped->suppliers)->toBe([])
+        ->and($result->mapped->products[0]['suppliers'])->toBe([])
+        ->and(array_keys(workbook($result->reportPath)))->not->toContain('Proveedores')
+        ->and(array_keys(workbook($result->attentionPath)))->toBe(['Atención']);
+});
+
+it('tiene una ficha de revisión para cada revisión de proveedores', function () {
+    expect(array_keys(IssueCatalog::SUPPLIER_ISSUES))->toEqualCanonicalizing(SupplierMapper::REVIEW);
 });
 
 it('omite la hoja de pendientes si el importador no reporta ninguno', function () {
